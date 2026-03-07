@@ -11,6 +11,68 @@ export interface Movie {
   overview: string
   popularity: number
   adult: boolean
+  mediaType?: 'movie' | 'tv'
+}
+
+export interface TVShow {
+  id: number
+  name: string
+  original_name: string
+  poster_path: string | null
+  backdrop_path: string | null
+  vote_average: number
+  vote_count: number
+  first_air_date: string
+  genre_ids: number[]
+  overview: string
+  popularity: number
+}
+
+export interface TVSeason {
+  id: number
+  name: string
+  season_number: number
+  episode_count: number
+  air_date: string | null
+  poster_path: string | null
+  overview: string
+}
+
+export interface TVDetail {
+  id: number
+  name: string
+  original_name: string
+  poster_path: string | null
+  backdrop_path: string | null
+  vote_average: number
+  vote_count: number
+  first_air_date: string
+  last_air_date: string
+  genres: Genre[]
+  overview: string
+  tagline: string
+  status: string
+  number_of_seasons: number
+  number_of_episodes: number
+  episode_run_time: number[]
+  in_production: boolean
+  networks: { id: number; name: string; logo_path: string | null }[]
+  created_by: { id: number; name: string; profile_path: string | null }[]
+  production_countries: { iso_3166_1: string; name: string }[]
+  spoken_languages: { name: string; iso_639_1: string }[]
+  popularity: number
+  seasons: TVSeason[]
+}
+
+export interface PersonTVCredit {
+  id: number
+  name: string
+  character?: string
+  job?: string
+  poster_path: string | null
+  first_air_date: string
+  vote_average: number
+  genre_ids: number[]
 }
 
 export interface MovieDetail {
@@ -78,4 +140,62 @@ export interface SearchFilters {
   year: string
   minRating: number
   sortBy: 'popularity.desc' | 'vote_average.desc' | 'release_date.desc' | 'release_date.asc'
+  runtime: '' | '~90' | '90~120' | '120~150' | '150~'
+  language: string
+}
+
+export interface VideoItem {
+  id: string
+  key: string
+  name: string
+  site: string
+  type: string
+  iso_639_1: string
+}
+
+export interface CrewMember {
+  id: number
+  name: string
+  job: string
+  department: string
+  profile_path: string | null
+}
+
+export interface PersonDetail {
+  id: number
+  name: string
+  biography: string
+  birthday: string | null
+  deathday: string | null
+  place_of_birth: string | null
+  profile_path: string | null
+  known_for_department: string
+  gender: number
+  popularity: number
+  also_known_as: string[]
+}
+
+export interface MovieImage {
+  file_path: string
+  width: number
+  height: number
+  aspect_ratio: number
+  vote_average: number
+  vote_count: number
+}
+
+export interface WatchedMovie extends Movie {
+  myRating: number
+  watchedAt: Date
+}
+
+export interface PersonCredit {
+  id: number
+  title: string
+  character?: string
+  job?: string
+  poster_path: string | null
+  release_date: string
+  vote_average: number
+  genre_ids: number[]
 }

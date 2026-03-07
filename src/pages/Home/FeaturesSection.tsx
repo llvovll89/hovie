@@ -11,7 +11,7 @@ const FEATURES = [
 
 export default function FeaturesSection() {
   return (
-    <section style={{ padding: '80px 20px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+    <section style={{ padding: '80px 20px', borderTop: '1px solid var(--border)' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', marginBottom: 12, textTransform: 'uppercase' }}>Everything You Need</p>
@@ -29,11 +29,11 @@ function FeatureCard({ feature, isLast }: { feature: typeof FEATURES[0]; isLast:
   const [hovered, setHovered] = useState(false)
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ padding: '36px 28px', borderRight: isLast ? 'none' : '1px solid rgba(255,255,255,0.07)', backgroundColor: hovered ? 'rgba(255,255,255,0.018)' : 'transparent', transition: 'background-color 0.3s' }}
+      style={{ padding: '36px 28px', borderRight: isLast ? 'none' : '1px solid var(--border)', backgroundColor: hovered ? 'var(--bg-hover)' : 'transparent', transition: 'background-color 0.3s' }}
     >
       <div style={{ color: A, marginBottom: 20, display: 'inline-block', transition: 'transform 0.3s', transform: hovered ? 'scale(1.1)' : 'scale(1)' }}>{feature.icon}</div>
       <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, margin: '0 0 10px' }}>{feature.title}</h3>
-      <p style={{ color: 'rgba(255,255,255,0.42)', fontSize: 13, lineHeight: 1.75, margin: 0 }}>{feature.desc}</p>
+      <p style={{ color: 'var(--text-3)', fontSize: 13, lineHeight: 1.75, margin: 0 }}>{feature.desc}</p>
     </div>
   )
 }

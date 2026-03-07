@@ -11,14 +11,15 @@ export default function MovieCard({ movie, rank }: Props) {
   const navigate = useNavigate()
   const [hovered, setHovered] = useState(false)
   const posterUrl = IMG.poster(movie.poster_path, 'w342')
+  const href = movie.mediaType === 'tv' ? `/tv/${movie.id}` : `/movie/${movie.id}`
 
   return (
-    <div onClick={() => navigate(`/movie/${movie.id}`)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ cursor: 'pointer', position: 'relative' }}>
-      <div style={{ position: 'relative', aspectRatio: '2/3', overflow: 'hidden', backgroundColor: '#111', borderRadius: 2 }}>
+    <div onClick={() => navigate(href)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ cursor: 'pointer', position: 'relative' }}>
+      <div style={{ position: 'relative', aspectRatio: '2/3', overflow: 'hidden', backgroundColor: 'var(--bg-elevated)', borderRadius: 2 }}>
         {posterUrl ? (
           <img src={posterUrl} alt={movie.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease', transform: hovered ? 'scale(1.06)' : 'scale(1)' }} loading="lazy" />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'rgba(255,255,255,0.2)' }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-4)' }}>
             <span style={{ fontSize: 32 }}>🎬</span>
             <span style={{ fontSize: 11 }}>포스터 없음</span>
           </div>
@@ -42,6 +43,18 @@ export default function MovieCard({ movie, rank }: Props) {
           </div>
         )}
 
+        {movie.mediaType === 'tv' && (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, backgroundColor: 'var(--accent)' }} />
+        )}
+        {movie.mediaType === 'tv' && (
+          <div style={{ position: 'absolute', top: 8, left: rank !== undefined ? 46 : 8, backgroundColor: 'rgba(0,30,60,0.82)', backdropFilter: 'blur(6px)', border: '1px solid rgba(0,153,255,0.5)', color: 'var(--accent)', fontSize: 10, fontWeight: 700, padding: '3px 8px', letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="2" y="7" width="20" height="14" rx="2" />
+              <path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+            </svg>
+            TV
+          </div>
+        )}
         {movie.vote_average > 0 && rank === undefined && (
           <div style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', color: A, fontSize: 11, fontWeight: 600, padding: '3px 7px', borderRadius: 2 }}>
             ★ {movie.vote_average.toFixed(1)}
@@ -50,10 +63,17 @@ export default function MovieCard({ movie, rank }: Props) {
       </div>
 
       <div style={{ padding: '8px 2px 0' }}>
-        <p style={{ fontSize: 13, color: hovered ? '#fff' : 'rgba(255,255,255,0.75)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.2s' }}>
+        <p style={{ fontSize: 13, color: hovered ? 'var(--text)' : 'var(--text-2)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.2s' }}>
           {movie.title}
         </p>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>{movie.release_date?.split('-')[0]}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-4)' }}>{movie.release_date?.split('-')[0]}</span>
+          {movie.mediaType === 'tv' && (
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent)', border: '1px solid rgba(0,153,255,0.35)', padding: '1px 5px', letterSpacing: '0.1em' }}>
+              TV
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
