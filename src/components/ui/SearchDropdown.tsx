@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tmdb, IMG } from '../../lib/tmdb'
 import Spinner from './Spinner'
@@ -42,7 +42,7 @@ export default function SearchDropdown({ placeholder = '영화 제목을 검색�
   const [recentOpen, setRecentOpen] = useState(false)
   const navigate = useNavigate()
   const containerRef = useRef<HTMLDivElement>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {

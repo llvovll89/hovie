@@ -4,6 +4,7 @@ import { useMovieDetail } from '../../hooks/useMovieDetail'
 import { useAuth } from '../../hooks/useAuth'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { useAuthModal } from '../../contexts/AuthModalContext'
+import { useToast } from '../../contexts/ToastContext'
 import { IMG } from '../../lib/tmdb'
 import { addToWatchlist, removeFromWatchlist, checkInWatchlist, addToWatched, removeFromWatched, checkInWatched, updateWatchedRating, isFirebaseConfigured } from '../../lib/firebase'
 import MovieCard from '../../components/ui/MovieCard'
@@ -12,7 +13,6 @@ import StarRating from '../../components/ui/StarRating'
 import StreamingInfo from './StreamingInfo'
 import CommentSection from './CommentSection'
 import ImageGallery from './ImageGallery'
-import type { MovieDetail as TMovieDetail } from '../../types'
 
 const A = 'var(--accent)'
 const AH = 'var(--accent-hover)'
@@ -24,6 +24,7 @@ export default function MovieDetail() {
   const { isMobile } = useBreakpoint()
   const { user } = useAuth()
   const { openSignIn } = useAuthModal()
+  const { showToast } = useToast()
   const movieId = Number(id)
 
   const { movie, cast, directors, providers, providerRegion, recommendations, similar, trailerKey, loading, error } = useMovieDetail(movieId)
@@ -40,13 +41,13 @@ export default function MovieDetail() {
   async function handleShare() {
     const url = window.location.href
     if (navigator.share) {
-      try { await navigator.share({ title: `${movie?.title ?? ''} - HOVIE`, url }) } catch {}
+      try { await navigator.share({ title: `${movie?.title ?? ''} - HOVIE`, url }) } catch { }
     } else {
       try {
         await navigator.clipboard.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-      } catch {}
+      } catch { }
     }
   }
 
@@ -59,12 +60,20 @@ export default function MovieDetail() {
     })
   }, [user, movieId])
 
+  useEffect(() => {
+    if (!trailerPlaying) return
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setTrailerPlaying(false) }
+    document.addEventListener('keydown', fn)
+    return () => document.removeEventListener('keydown', fn)
+  }, [trailerPlaying])
+
   async function saveWatchedEntry() {
     if (!user || !movie) return
     setWatchedLoading(true)
     try {
       if (inWatched) {
         await updateWatchedRating(user.uid, movieId, watchedRating)
+        showToast('별점을 수정했습니다')
       } else {
         await addToWatched(user.uid, {
           id: movie.id, title: movie.title, original_title: movie.original_title,
@@ -74,6 +83,7 @@ export default function MovieDetail() {
           genre_ids: movie.genres.map(g => g.id), popularity: movie.popularity, adult: false,
         }, watchedRating)
         setInWatched(true)
+        showToast('시청 기록을 저장했습니다')
       }
       setWatchedPickerOpen(false)
     } finally { setWatchedLoading(false) }
@@ -87,6 +97,7 @@ export default function MovieDetail() {
       setInWatched(false)
       setWatchedRating(0)
       setWatchedPickerOpen(false)
+      showToast('시청 기록을 삭제했습니다', 'info')
     } finally { setWatchedLoading(false) }
   }
 
@@ -99,6 +110,7 @@ export default function MovieDetail() {
       if (inWatchlist) {
         await removeFromWatchlist(user.uid, movieId)
         setInWatchlist(false)
+        showToast('위시리스트에서 제거했습니다', 'info')
       } else {
         await addToWatchlist(user.uid, {
           id: movie.id, title: movie.title, original_title: movie.original_title,
@@ -108,6 +120,7 @@ export default function MovieDetail() {
           genre_ids: movie.genres.map(g => g.id), popularity: movie.popularity, adult: false,
         })
         setInWatchlist(true)
+        showToast('위시리스트에 추가했습니다')
       }
     } finally { setWatchlistLoading(false) }
   }
@@ -253,114 +266,114 @@ export default function MovieDetail() {
             </p>
 
             <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {trailerKey && (
-                <button
-                  onClick={() => { setTrailerPlaying(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', backgroundColor: A, color: 'var(--accent-on)', border: 'none', fontSize: 12, letterSpacing: '0.08em', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s' }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = AH)}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = A)}
-                >
-                  <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M5 3l14 9-14 9V3z" />
-                  </svg>
-                  예고편 보기
-                </button>
-              )}
-              {isFirebaseConfigured && (
-                <button
-                  onClick={toggleWatchlist}
-                  disabled={watchlistLoading}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', border: `1px solid ${inWatchlist ? A : 'var(--border-4)'}`, backgroundColor: inWatchlist ? 'rgba(0,153,255,0.1)' : 'transparent', color: inWatchlist ? A : 'var(--text-3)', fontSize: 12, letterSpacing: '0.08em', cursor: watchlistLoading ? 'wait' : 'pointer', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { if (!watchlistLoading) e.currentTarget.style.borderColor = A }}
-                  onMouseLeave={e => { if (!inWatchlist) e.currentTarget.style.borderColor = 'var(--border-4)' }}
-                >
-                  <HeartIcon filled={inWatchlist} />
-                  {inWatchlist ? '위시리스트에 저장됨' : '위시리스트에 추가'}
-                </button>
-              )}
-              {isFirebaseConfigured && (
-                <button
-                  onClick={() => {
-                    if (!user) { openSignIn(); return }
-                    setWatchedPickerOpen(o => !o)
-                  }}
-                  disabled={watchedLoading}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', border: `1px solid ${inWatched ? A : 'var(--border-4)'}`, backgroundColor: inWatched ? 'rgba(0,153,255,0.1)' : 'transparent', color: inWatched ? A : 'var(--text-3)', fontSize: 12, letterSpacing: '0.08em', cursor: watchedLoading ? 'wait' : 'pointer', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { if (!watchedLoading) e.currentTarget.style.borderColor = A }}
-                  onMouseLeave={e => { if (!inWatched) e.currentTarget.style.borderColor = 'var(--border-4)' }}
-                >
-                  <EyeIcon filled={inWatched} />
-                  {inWatched
-                    ? watchedRating > 0 ? `시청 완료 ${'★'.repeat(watchedRating)}` : '시청 완료'
-                    : '이미 봤어요'}
-                </button>
-              )}
-              <button
-                onClick={handleShare}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', border: `1px solid ${copied ? A : 'var(--border-4)'}`, backgroundColor: copied ? 'rgba(0,153,255,0.08)' : 'transparent', color: copied ? A : 'var(--text-3)', fontSize: 12, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { if (!copied) e.currentTarget.style.borderColor = 'var(--border-2)' }}
-                onMouseLeave={e => { if (!copied) e.currentTarget.style.borderColor = 'var(--border-4)' }}
-              >
-                {copied ? (
-                  <>
-                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {trailerKey && (
+                  <button
+                    onClick={() => { setTrailerPlaying(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', backgroundColor: A, color: 'var(--accent-on)', border: 'none', fontSize: 12, letterSpacing: '0.08em', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s' }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = AH)}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = A)}
+                  >
+                    <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M5 3l14 9-14 9V3z" />
                     </svg>
-                    링크 복사됨
-                  </>
-                ) : (
-                  <>
-                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-                      <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
-                    </svg>
-                    공유
-                  </>
+                    예고편 보기
+                  </button>
                 )}
-              </button>
-            </div>
-
-            {/* Watched rating picker */}
-            {watchedPickerOpen && (
-              <div style={{ marginTop: 8, padding: '16px 18px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ fontSize: 10, letterSpacing: '0.15em', color: 'var(--text-4)', margin: 0, textTransform: 'uppercase' }}>
-                  {inWatched ? '내 별점 수정' : '내 별점 (선택사항)'}
-                </p>
-                <StarRating value={watchedRating} onChange={setWatchedRating} size={24} />
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {isFirebaseConfigured && (
                   <button
-                    onClick={saveWatchedEntry}
+                    onClick={toggleWatchlist}
+                    disabled={watchlistLoading}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', border: `1px solid ${inWatchlist ? A : 'var(--border-4)'}`, backgroundColor: inWatchlist ? 'rgba(0,153,255,0.1)' : 'transparent', color: inWatchlist ? A : 'var(--text-3)', fontSize: 12, letterSpacing: '0.08em', cursor: watchlistLoading ? 'wait' : 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { if (!watchlistLoading) e.currentTarget.style.borderColor = A }}
+                    onMouseLeave={e => { if (!inWatchlist) e.currentTarget.style.borderColor = 'var(--border-4)' }}
+                  >
+                    <HeartIcon filled={inWatchlist} />
+                    {inWatchlist ? '위시리스트에 저장됨' : '위시리스트에 추가'}
+                  </button>
+                )}
+                {isFirebaseConfigured && (
+                  <button
+                    onClick={() => {
+                      if (!user) { openSignIn(); return }
+                      setWatchedPickerOpen(o => !o)
+                    }}
                     disabled={watchedLoading}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', backgroundColor: A, color: 'var(--accent-on)', border: 'none', fontSize: 11, letterSpacing: '0.12em', fontWeight: 600, cursor: watchedLoading ? 'wait' : 'pointer', transition: 'background-color 0.2s' }}
-                    onMouseEnter={e => { if (!watchedLoading) e.currentTarget.style.backgroundColor = AH }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = A }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', border: `1px solid ${inWatched ? A : 'var(--border-4)'}`, backgroundColor: inWatched ? 'rgba(0,153,255,0.1)' : 'transparent', color: inWatched ? A : 'var(--text-3)', fontSize: 12, letterSpacing: '0.08em', cursor: watchedLoading ? 'wait' : 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { if (!watchedLoading) e.currentTarget.style.borderColor = A }}
+                    onMouseLeave={e => { if (!inWatched) e.currentTarget.style.borderColor = 'var(--border-4)' }}
                   >
-                    {watchedLoading && <Spinner size={12} />}
-                    {inWatched ? '별점 수정' : '기록하기'}
+                    <EyeIcon filled={inWatched} />
+                    {inWatched
+                      ? watchedRating > 0 ? `시청 완료 ${'★'.repeat(watchedRating)}` : '시청 완료'
+                      : '이미 봤어요'}
                   </button>
-                  {inWatched && (
-                    <button
-                      onClick={deleteWatchedEntry}
-                      disabled={watchedLoading}
-                      style={{ padding: '8px 18px', background: 'none', border: '1px solid rgba(220,50,50,0.4)', color: 'rgba(220,50,50,0.7)', fontSize: 11, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,50,50,0.8)'; e.currentTarget.style.color = 'rgba(220,50,50,1)' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(220,50,50,0.4)'; e.currentTarget.style.color = 'rgba(220,50,50,0.7)' }}
-                    >
-                      기록 삭제
-                    </button>
+                )}
+                <button
+                  onClick={handleShare}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', border: `1px solid ${copied ? A : 'var(--border-4)'}`, backgroundColor: copied ? 'rgba(0,153,255,0.08)' : 'transparent', color: copied ? A : 'var(--text-3)', fontSize: 12, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
+                  onMouseEnter={e => { if (!copied) e.currentTarget.style.borderColor = 'var(--border-2)' }}
+                  onMouseLeave={e => { if (!copied) e.currentTarget.style.borderColor = 'var(--border-4)' }}
+                >
+                  {copied ? (
+                    <>
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      링크 복사됨
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                        <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                        <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
+                      </svg>
+                      공유
+                    </>
                   )}
-                  <button
-                    onClick={() => setWatchedPickerOpen(false)}
-                    style={{ padding: '8px 14px', background: 'none', border: '1px solid var(--border-4)', color: 'var(--text-4)', fontSize: 11, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-2)'; e.currentTarget.style.color = 'var(--text-2)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-4)'; e.currentTarget.style.color = 'var(--text-4)' }}
-                  >
-                    취소
-                  </button>
-                </div>
+                </button>
               </div>
-            )}
+
+              {/* Watched rating picker */}
+              {watchedPickerOpen && (
+                <div style={{ marginTop: 8, padding: '16px 18px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{ fontSize: 10, letterSpacing: '0.15em', color: 'var(--text-4)', margin: 0, textTransform: 'uppercase' }}>
+                    {inWatched ? '내 별점 수정' : '내 별점 (선택사항)'}
+                  </p>
+                  <StarRating value={watchedRating} onChange={setWatchedRating} size={24} />
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={saveWatchedEntry}
+                      disabled={watchedLoading}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', backgroundColor: A, color: 'var(--accent-on)', border: 'none', fontSize: 11, letterSpacing: '0.12em', fontWeight: 600, cursor: watchedLoading ? 'wait' : 'pointer', transition: 'background-color 0.2s' }}
+                      onMouseEnter={e => { if (!watchedLoading) e.currentTarget.style.backgroundColor = AH }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = A }}
+                    >
+                      {watchedLoading && <Spinner size={12} />}
+                      {inWatched ? '별점 수정' : '기록하기'}
+                    </button>
+                    {inWatched && (
+                      <button
+                        onClick={deleteWatchedEntry}
+                        disabled={watchedLoading}
+                        style={{ padding: '8px 18px', background: 'none', border: '1px solid rgba(220,50,50,0.4)', color: 'rgba(220,50,50,0.7)', fontSize: 11, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,50,50,0.8)'; e.currentTarget.style.color = 'rgba(220,50,50,1)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(220,50,50,0.4)'; e.currentTarget.style.color = 'rgba(220,50,50,0.7)' }}
+                      >
+                        기록 삭제
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setWatchedPickerOpen(false)}
+                      style={{ padding: '8px 14px', background: 'none', border: '1px solid var(--border-4)', color: 'var(--text-4)', fontSize: 11, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-2)'; e.currentTarget.style.color = 'var(--text-2)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-4)'; e.currentTarget.style.color = 'var(--text-4)' }}
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>

@@ -4,6 +4,7 @@ import Navbar from './Navbar'
 import Footer from './Footer'
 import AuthModal from '../ui/AuthModal'
 import { AuthModalContext } from '../../contexts/AuthModalContext'
+import { ToastProvider } from '../../contexts/ToastContext'
 
 const BOTTOM_TABS = [
   {
@@ -54,7 +55,7 @@ const BOTTOM_TABS = [
 function BottomNav() {
   const { pathname } = useLocation()
   return (
-    <nav className="bottom-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 90, backgroundColor: 'var(--nav-bg)', backdropFilter: 'blur(16px)', borderTop: '1px solid var(--border)', height: 58, display: 'flex', alignItems: 'stretch' }}>
+    <nav className="bottom-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 90, backgroundColor: 'var(--nav-bg)', backdropFilter: 'blur(16px)', borderTop: '1px solid var(--border)', height: 58, alignItems: 'stretch' }}>
       {BOTTOM_TABS.map(tab => {
         const active = tab.exact ? pathname === tab.to : (pathname === tab.to || pathname.startsWith(tab.to + '/'))
         return (
@@ -79,21 +80,23 @@ export default function Layout() {
 
   return (
     <AuthModalContext.Provider value={{ openSignIn: () => setAuthMode('signin'), openSignUp: () => setAuthMode('signup') }}>
-      <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', color: 'var(--text)' }}>
-        <Navbar />
-        <main style={{ paddingTop: isHome ? 0 : 68 }}>
-          <Outlet />
-        </main>
-        <Footer />
-        <BottomNav />
-        {authMode && (
-          <AuthModal
-            mode={authMode}
-            onClose={() => setAuthMode(null)}
-            onSwitchMode={m => setAuthMode(m)}
-          />
-        )}
-      </div>
+      <ToastProvider>
+        <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', color: 'var(--text)' }}>
+          <Navbar />
+          <main style={{ paddingTop: isHome ? 0 : 68 }}>
+            <Outlet />
+          </main>
+          <Footer />
+          <BottomNav />
+          {authMode && (
+            <AuthModal
+              mode={authMode}
+              onClose={() => setAuthMode(null)}
+              onSwitchMode={m => setAuthMode(m)}
+            />
+          )}
+        </div>
+      </ToastProvider>
     </AuthModalContext.Provider>
   )
 }

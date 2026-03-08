@@ -1,6 +1,6 @@
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import type { User } from 'firebase/auth'
-import { addComment, getComments, addTVComment, getTVComments, isFirebaseConfigured } from '../../lib/firebase'
+import { addComment, getComments, deleteComment, addTVComment, getTVComments, deleteTVComment, isFirebaseConfigured } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import { useAuthModal } from '../../contexts/AuthModalContext'
 import StarRating from '../../components/ui/StarRating'
@@ -10,16 +10,23 @@ import type { Comment } from '../../types'
 const A = 'var(--accent)'
 const AO = 'var(--accent-on)'
 
-interface Props { movieId: number; mediaType?: 'movie' | 'tv' }
+interface Props { movieId: number; mediaType?: 'movie' | 'tv'; }
+
+const deleteCommentFnMap = {
+  movie: deleteComment,
+  tv: deleteTVComment,
+}
 
 export default function CommentSection({ movieId, mediaType = 'movie' }: Props) {
   const getCommentsFn = mediaType === 'tv' ? getTVComments : getComments
   const addCommentFn = mediaType === 'tv' ? addTVComment : addComment
+  const deleteCommentFn = deleteCommentFnMap[mediaType]
   const { user, loading: authLoading } = useAuth()
   const { openSignIn } = useAuthModal()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [rating, setRating] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -36,13 +43,24 @@ export default function CommentSection({ movieId, mediaType = 'movie' }: Props) 
     setError(null)
     try {
       await addCommentFn(movieId, user as User, content.trim(), rating)
-      const updated = await getComments(movieId)
+      const updated = await getCommentsFn(movieId)
       setComments(updated)
       setContent('')
       setRating(0)
     } catch {
       setError('댓글 등록에 실패했습니다. 다시 시도해주세요.')
     } finally { setSubmitting(false) }
+  }
+
+  async function handleDelete(commentId: string) {
+    if (!user) return
+    setDeletingId(commentId)
+    try {
+      await deleteCommentFn(movieId, commentId)
+      setComments(prev => prev.filter(c => c.id !== commentId))
+    } catch {
+      setError('댓글 삭제에 실패했습니다.')
+    } finally { setDeletingId(null) }
   }
 
   if (!isFirebaseConfigured) {
@@ -123,14 +141,27 @@ export default function CommentSection({ movieId, mediaType = 'movie' }: Props) 
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {comments.map(comment => <CommentItem key={comment.id} comment={comment} />)}
+          {comments.map(comment => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              canDelete={user?.uid === comment.userId}
+              deleting={deletingId === comment.id}
+              onDelete={() => handleDelete(comment.id)}
+            />
+          ))}
         </div>
       )}
     </div>
   )
 }
 
-function CommentItem({ comment }: { comment: Comment }) {
+function CommentItem({ comment, canDelete, deleting, onDelete }: {
+  comment: Comment
+  canDelete: boolean
+  deleting: boolean
+  onDelete: () => void
+}) {
   const date = new Date(comment.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   return (
     <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
@@ -146,8 +177,18 @@ function CommentItem({ comment }: { comment: Comment }) {
           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{comment.userDisplayName}</p>
           <p style={{ fontSize: 11, color: 'var(--text-4)', margin: '2px 0 0' }}>{date}</p>
         </div>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           <StarRating value={comment.rating} readOnly size={14} />
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              title="댓글 삭제"
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', cursor: deleting ? 'wait' : 'pointer', fontSize: 16, lineHeight: 1, padding: 2, transition: 'color 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.25)')}
+            >×</button>
+          )}
         </div>
       </div>
       <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.7, margin: 0 }}>

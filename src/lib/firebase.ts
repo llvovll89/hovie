@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import {
   getAuth,
   GoogleAuthProvider,
@@ -38,7 +38,9 @@ const firebaseConfig = {
 
 export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean)
 
-const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null
+const app = isFirebaseConfigured
+  ? (getApps().length ? getApp() : initializeApp(firebaseConfig))
+  : null
 export const auth = app ? getAuth(app) : null
 export const db = app ? getFirestore(app) : null
 
@@ -211,6 +213,11 @@ export async function updateWatchedRating(userId: string, movieId: number, myRat
   await updateDoc(doc(db, 'users', userId, 'watched', String(movieId)), { myRating })
 }
 
+export async function deleteComment(movieId: number, commentId: string): Promise<void> {
+  if (!db) throw new Error('Firebase not configured')
+  await deleteDoc(doc(db, 'movies', String(movieId), 'comments', commentId))
+}
+
 /* ── TV Comments ───────────────────────────────────────────── */
 
 export async function addTVComment(
@@ -226,6 +233,11 @@ export async function addTVComment(
     rating,
     createdAt: serverTimestamp(),
   })
+}
+
+export async function deleteTVComment(tvId: number, commentId: string): Promise<void> {
+  if (!db) throw new Error('Firebase not configured')
+  await deleteDoc(doc(db, 'tv', String(tvId), 'comments', commentId))
 }
 
 export async function getTVComments(tvId: number): Promise<Comment[]> {

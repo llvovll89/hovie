@@ -4,6 +4,7 @@ import { useTVDetail } from '../../hooks/useTVDetail'
 import { useAuth } from '../../hooks/useAuth'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { useAuthModal } from '../../contexts/AuthModalContext'
+import { useToast } from '../../contexts/ToastContext'
 import { IMG } from '../../lib/tmdb'
 import { addToWatchlist, removeFromWatchlist, checkInWatchlist, addToWatched, removeFromWatched, checkInWatched, updateWatchedRating, isFirebaseConfigured } from '../../lib/firebase'
 import MovieCard from '../../components/ui/MovieCard'
@@ -31,6 +32,7 @@ export default function TVDetail() {
   const { isMobile } = useBreakpoint()
   const { user } = useAuth()
   const { openSignIn } = useAuthModal()
+  const { showToast } = useToast()
   const tvId = Number(id)
 
   const { show, cast, providers, providerRegion, recommendations, similar, trailerKey, loading, error } = useTVDetail(tvId)
@@ -52,6 +54,13 @@ export default function TVDetail() {
       setWatchedRating(myRating)
     })
   }, [user, tvId])
+
+  useEffect(() => {
+    if (!trailerPlaying) return
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setTrailerPlaying(false) }
+    document.addEventListener('keydown', fn)
+    return () => document.removeEventListener('keydown', fn)
+  }, [trailerPlaying])
 
   function toMovieData(): Movie {
     if (!show) throw new Error('no show')
@@ -87,9 +96,11 @@ export default function TVDetail() {
       if (inWatchlist) {
         await removeFromWatchlist(user.uid, tvId)
         setInWatchlist(false)
+        showToast('위시리스트에서 제거했습니다', 'info')
       } else {
         await addToWatchlist(user.uid, toMovieData())
         setInWatchlist(true)
+        showToast('위시리스트에 추가했습니다')
       }
     } finally { setWatchlistLoading(false) }
   }
@@ -100,9 +111,11 @@ export default function TVDetail() {
     try {
       if (inWatched) {
         await updateWatchedRating(user.uid, tvId, watchedRating)
+        showToast('별점을 수정했습니다')
       } else {
         await addToWatched(user.uid, toMovieData(), watchedRating)
         setInWatched(true)
+        showToast('시청 기록을 저장했습니다')
       }
       setWatchedPickerOpen(false)
     } finally { setWatchedLoading(false) }
@@ -116,6 +129,7 @@ export default function TVDetail() {
       setInWatched(false)
       setWatchedRating(0)
       setWatchedPickerOpen(false)
+      showToast('시청 기록을 삭제했습니다', 'info')
     } finally { setWatchedLoading(false) }
   }
 

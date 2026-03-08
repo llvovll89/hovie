@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import SearchDropdown from '../../components/ui/SearchDropdown'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 const A = 'var(--accent)'
-const AH = 'var(--accent-hover)'
-const AO = 'var(--accent-on)'
 
 export default function Hero() {
   const navigate = useNavigate()
+  const { isMobile } = useBreakpoint()
 
   return (
     <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -53,10 +53,12 @@ export default function Hero() {
         </div>
       </div>
 
-      <div style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-4)' }}>
-        <span style={{ fontSize: 9, letterSpacing: '0.35em' }}>SCROLL</span>
-        <div style={{ width: 1, height: 40, background: 'linear-gradient(to bottom, var(--text-2), transparent)' }} />
-      </div>
+      {!isMobile && (
+        <div style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--text-4)' }}>
+          <span style={{ fontSize: 9, letterSpacing: '0.35em' }}>SCROLL</span>
+          <div style={{ width: 1, height: 40, background: 'linear-gradient(to bottom, var(--text-2), transparent)' }} />
+        </div>
+      )}
     </section>
   )
 }

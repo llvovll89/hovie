@@ -335,7 +335,7 @@ function MoviePicker({
   const [results, setResults] = useState<Movie[]>([])
   const [searching, setSearching] = useState(false)
   const [open, setOpen] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -348,7 +348,7 @@ function MoviePicker({
 
   function handleInput(val: string) {
     setQuery(val)
-    clearTimeout(timerRef.current)
+    if (timerRef.current !== null) clearTimeout(timerRef.current)
     if (!val.trim()) { setResults([]); setOpen(false); return }
     setSearching(true)
     timerRef.current = setTimeout(async () => {
@@ -536,10 +536,10 @@ function MovieHeader({ slot, side, winner, wins, isMobile }: {
       <div style={{ width: isMobile ? 44 : 68, flexShrink: 0 }}>
         {poster
           ? <img
-              src={poster}
-              alt={m.title}
-              style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block', outline: winner ? `2px solid ${A}` : 'none', outlineOffset: 2 }}
-            />
+            src={poster}
+            alt={m.title}
+            style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block', outline: winner ? `2px solid ${A}` : 'none', outlineOffset: 2 }}
+          />
           : <div style={{ width: '100%', aspectRatio: '2/3', backgroundColor: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎬</div>
         }
       </div>
