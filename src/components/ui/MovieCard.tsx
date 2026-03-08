@@ -14,12 +14,12 @@ export default function MovieCard({ movie, rank }: Props) {
   const href = movie.mediaType === 'tv' ? `/tv/${movie.id}` : `/movie/${movie.id}`
 
   return (
-    <div onClick={() => navigate(href)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ cursor: 'pointer', position: 'relative' }}>
-      <div style={{ position: 'relative', aspectRatio: '2/3', overflow: 'hidden', backgroundColor: 'var(--bg-elevated)', borderRadius: 2 }}>
+    <div onClick={() => navigate(href)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ cursor: 'pointer', position: 'relative', alignSelf: 'start' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '2/3', overflow: 'hidden', backgroundColor: 'var(--bg-elevated)', borderRadius: 2 }}>
         {posterUrl ? (
-          <img src={posterUrl} alt={movie.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease', transform: hovered ? 'scale(1.06)' : 'scale(1)' }} loading="lazy" />
+          <img src={posterUrl} alt={movie.title} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease', transform: hovered ? 'scale(1.06)' : 'scale(1)' }} loading="lazy" />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-4)' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-4)' }}>
             <span style={{ fontSize: 32 }}>🎬</span>
             <span style={{ fontSize: 11 }}>포스터 없음</span>
           </div>
