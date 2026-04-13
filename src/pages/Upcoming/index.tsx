@@ -67,7 +67,7 @@ export default function Upcoming() {
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 36 }}>
             <div>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>Coming Soon</p>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, margin: 0 }}>
+              <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>
                 개봉 예정 영화
               </h2>
             </div>
@@ -175,7 +175,7 @@ function UpcomingHero({ movie }: { movie: Movie }) {
           )}
         </div>
 
-        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(32px, 5vw, 62px)', fontWeight: 700, lineHeight: 1.1, margin: '0 0 12px', maxWidth: 640 }}>
+        <h1 style={{ fontSize: 'clamp(32px, 5vw, 62px)', fontWeight: 700, lineHeight: 1.1, margin: '0 0 12px', maxWidth: 640 }}>
           {movie.title}
         </h1>
 

@@ -46,7 +46,7 @@ export default function Trending() {
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>
                 {timeWindow === 'week' ? 'This Week' : 'Today'}
               </p>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, margin: 0 }}>
+              <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>
                 더 많은 인기 {mediaType === 'tv' ? 'TV 시리즈' : '영화'}
               </h2>
             </div>
@@ -101,12 +101,12 @@ function TrendingHero({ movie, timeWindow, onToggle, mediaType, onMediaTypeToggl
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: A, fontFamily: 'Playfair Display, serif', lineHeight: 1 }}>#1</span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: A, lineHeight: 1 }}>#1</span>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>TRENDING</span>
           </div>
         </div>
 
-        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(32px, 5vw, 62px)', fontWeight: 700, lineHeight: 1.1, margin: '0 0 12px', maxWidth: 640 }}>
+        <h1 style={{ fontSize: 'clamp(32px, 5vw, 62px)', fontWeight: 700, lineHeight: 1.1, margin: '0 0 12px', maxWidth: 640 }}>
           {movie.title}
         </h1>
 

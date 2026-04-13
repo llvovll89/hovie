@@ -39,7 +39,7 @@ export default function Watchlist() {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 20px' }}>
         <div style={{ fontSize: 64, marginBottom: 20 }}>🎬</div>
-        <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, marginBottom: 12 }}>내 위시리스트</h2>
+        <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>내 위시리스트</h2>
         <p style={{ color: 'var(--text-3)', fontSize: 15, marginBottom: 32, maxWidth: 360, lineHeight: 1.7 }}>
           로그인하면 보고 싶은 영화를 저장하고<br />언제든지 다시 찾을 수 있습니다.
         </p>
@@ -71,7 +71,7 @@ export default function Watchlist() {
           )}
           <div>
             <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 6px', textTransform: 'uppercase' }}>My Hovie</p>
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, margin: 0 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>
               {user.displayName ?? '내'} 위시리스트
             </h1>
           </div>
@@ -109,7 +109,7 @@ function EmptyState({ icon, title, desc }: { icon: string; title: string; desc: 
   return (
     <div style={{ textAlign: 'center', padding: '100px 20px' }}>
       <p style={{ fontSize: 52, marginBottom: 16 }}>{icon}</p>
-      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, marginBottom: 10 }}>{title}</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 10 }}>{title}</h2>
       <p style={{ color: 'var(--text-4)', fontSize: 14, lineHeight: 1.7 }}>{desc}</p>
     </div>
   )

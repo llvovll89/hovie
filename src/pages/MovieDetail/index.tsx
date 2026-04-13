@@ -238,7 +238,7 @@ export default function MovieDetail() {
               ))}
             </div>
 
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: isMobile ? 22 : 'clamp(22px, 3.5vw, 38px)', fontWeight: 700, margin: '0 0 6px', lineHeight: 1.15 }}>
+            <h1 style={{ fontSize: isMobile ? 22 : 'clamp(22px, 3.5vw, 38px)', fontWeight: 700, margin: '0 0 6px', lineHeight: 1.15 }}>
               {movie.title}
             </h1>
             {movie.original_title !== movie.title && (
@@ -453,7 +453,7 @@ function MovieRow({ label, title, movies }: { label: string; title: string; movi
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: 52, marginBottom: 60 }}>
       <div style={{ marginBottom: 28 }}>
         <p style={{ color: 'var(--accent)', fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>{label}</p>
-        <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, margin: 0, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
           {title}
         </h2>
       </div>
@@ -484,7 +484,7 @@ function InfoMini({ label, value }: { label: string; value: string }) {
 function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 44 }}>
-      <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, fontWeight: 700, margin: '0 0 18px', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 18px', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
         {title}
       </h2>
       {children}

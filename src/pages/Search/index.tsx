@@ -174,7 +174,7 @@ export default function Search() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 24, fontWeight: 700, margin: 0 }}>
+                <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
                   {query ? `"${query}" 검색 결과` : '전체 탐색'}
                 </h1>
                 <div style={{ display: 'flex', border: '1px solid var(--border-2)', overflow: 'hidden' }}>

@@ -50,7 +50,7 @@ export default function Navbar() {
 
         {/* Logo */}
         <Link to="/" style={{ textDecoration: 'none', flexShrink: 0 }}>
-          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text)' }}>
+          <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text)' }}>
             HOV<span style={{ color: A }}>IE</span>
           </span>
         </Link>

@@ -21,7 +21,7 @@ export default function Hero() {
           ✦ &nbsp; Welcome to Hovie &nbsp; ✦
         </p>
 
-        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(40px, 9vw, 88px)', fontWeight: 700, lineHeight: 1.05, margin: '0 0 28px', letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: 'clamp(40px, 9vw, 88px)', fontWeight: 700, lineHeight: 1.05, margin: '0 0 28px', letterSpacing: '-0.02em' }}>
           Where Cinema<br />
           <span style={{ color: A }}>Meets Elegance</span>
         </h1>

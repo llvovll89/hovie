@@ -106,7 +106,7 @@ export default function PersonDetail() {
           {/* Info */}
           <div style={{ flex: 1, textAlign: isMobile ? 'center' : 'left' }}>
             <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 8 }}>{deptLabel}</p>
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: isMobile ? 26 : 36, fontWeight: 700, margin: '0 0 20px', lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: isMobile ? 26 : 36, fontWeight: 700, margin: '0 0 20px', lineHeight: 1.2 }}>
               {person.name}
             </h1>
 
@@ -158,7 +158,7 @@ export default function PersonDetail() {
           <section style={{ marginBottom: 60 }}>
             <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 32 }}>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>Filmography</p>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, margin: 0 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
                 출연 작품 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>{castMovies.length}편</span>
               </h2>
             </div>
@@ -173,7 +173,7 @@ export default function PersonDetail() {
           <section style={{ marginBottom: 60 }}>
             <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 32 }}>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>Directed</p>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, margin: 0 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
                 감독 작품 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>{crewMovies.length}편</span>
               </h2>
             </div>
@@ -188,7 +188,7 @@ export default function PersonDetail() {
           <section style={{ marginBottom: 60 }}>
             <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 32 }}>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>TV Series</p>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, margin: 0 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
                 TV 출연작 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>{tvMovies.length}편</span>
               </h2>
             </div>

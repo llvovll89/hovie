@@ -14,7 +14,7 @@ export default function TrendingSection() {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 40 }}>
           <div>
             <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>This Week</p>
-            <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, margin: 0 }}>Trending Now</h2>
+            <h2 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Trending Now</h2>
           </div>
           <Link to="/trending" style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--text-4)', textDecoration: 'none', borderBottom: '1px solid var(--border-3)', paddingBottom: 3 }}
             onMouseEnter={e => { e.currentTarget.style.color = A; e.currentTarget.style.borderBottomColor = 'rgba(0,153,255,0.4)' }}

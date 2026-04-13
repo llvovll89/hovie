@@ -15,7 +15,7 @@ export default function FeaturesSection() {
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', marginBottom: 12, textTransform: 'uppercase' }}>Everything You Need</p>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, margin: 0 }}>Your Complete Film Experience</h2>
+          <h2 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Your Complete Film Experience</h2>
         </div>
         <div className="features-grid">
           {FEATURES.map((f, i) => <FeatureCard key={i} feature={f} isLast={i === FEATURES.length - 1} />)}
@@ -32,7 +32,7 @@ function FeatureCard({ feature, isLast }: { feature: typeof FEATURES[0]; isLast:
       style={{ padding: '36px 28px', borderRight: isLast ? 'none' : '1px solid var(--border)', backgroundColor: hovered ? 'var(--bg-hover)' : 'transparent', transition: 'background-color 0.3s' }}
     >
       <div style={{ color: A, marginBottom: 20, display: 'inline-block', transition: 'transform 0.3s', transform: hovered ? 'scale(1.1)' : 'scale(1)' }}>{feature.icon}</div>
-      <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, margin: '0 0 10px' }}>{feature.title}</h3>
+      <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 10px' }}>{feature.title}</h3>
       <p style={{ color: 'var(--text-3)', fontSize: 13, lineHeight: 1.75, margin: 0 }}>{feature.desc}</p>
     </div>
   )

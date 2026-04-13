@@ -223,7 +223,7 @@ export default function Compare() {
         <div style={{ marginBottom: 36 }}>
           <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>Compare</p>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, margin: 0 }}>영화 비교</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>영화 비교</h1>
             <RandomButton loading={randomLoading} onClick={handleRandom} />
           </div>
         </div>
@@ -239,7 +239,7 @@ export default function Compare() {
           <MoviePicker label="A" slot={slotA} loading={loadingA || (randomLoading && !slotA)} onSelect={id => loadSlot(id, 'A')} onClear={() => setSlotA(null)} side="left" />
           {!isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 80 }}>
-              <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: 'var(--border-2)', letterSpacing: '0.05em' }}>VS</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--border-2)', letterSpacing: '0.05em' }}>VS</span>
             </div>
           )}
           <MoviePicker label="B" slot={slotB} loading={loadingB || (randomLoading && !slotB)} onSelect={id => loadSlot(id, 'B')} onClear={() => setSlotB(null)} side="right" />
@@ -485,7 +485,7 @@ function VsCenter({ winsA, winsB, isMobile }: { winsA: number; winsB: number; is
       borderLeft: '1px solid var(--border-2)', borderRight: '1px solid var(--border-2)',
       gap: 8,
     }}>
-      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: isMobile ? 14 : 18, fontWeight: 700, color: 'var(--text-4)' }}>VS</span>
+      <span style={{ fontSize: isMobile ? 14 : 18, fontWeight: 700, color: 'var(--text-4)' }}>VS</span>
       {total > 0 && (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <p style={{ fontSize: 8, color: 'var(--text-5)', letterSpacing: '0.1em', margin: 0 }}>SCORE</p>

@@ -20,7 +20,7 @@ export default function Home() {
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,153,255,0.04) 0%, transparent 70%)' }} />
         <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
           <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', marginBottom: 18, textTransform: 'uppercase' }}>Join Hovie</p>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 700, lineHeight: 1.1, marginBottom: 20 }}>
+          <h2 style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 700, lineHeight: 1.1, marginBottom: 20 }}>
             Start Your Film<br />Journey Today
           </h2>
           <p style={{ color: 'var(--text-3)', fontSize: 16, marginBottom: 44, lineHeight: 1.7 }}>
