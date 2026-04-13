@@ -6,7 +6,7 @@ export default function Footer() {
   return (
     <footer style={{ borderTop: '1px solid var(--border)', padding: '36px 20px', backgroundColor: 'var(--bg)' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
-        <Link to="/" style={{ textDecoration: 'none', fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text)' }}>
+        <Link to="/" style={{ textDecoration: 'none', fontSize: 17, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text)' }}>
           HOV<span style={{ color: A }}>IE</span>
         </Link>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>

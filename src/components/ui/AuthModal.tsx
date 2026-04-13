@@ -148,7 +148,7 @@ export default function AuthModal({ mode, onClose, onSwitchMode }: Props) {
         <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', marginBottom: 10, textTransform: 'uppercase' }}>
           {mode === 'signup' ? 'Join Hovie' : 'Welcome Back'}
         </p>
-        <h2 style={{ fontfontSize: 24, fontWeight: 700, margin: '0 0 28px', color: 'var(--text)' }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 28px', color: 'var(--text)' }}>
           {mode === 'signup' ? '무료로 시작하기' : '로그인'}
         </h2>
 
