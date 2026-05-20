@@ -281,7 +281,7 @@ export default function MovieDetail() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {trailerKey && (
                   <button
-                    onClick={() => { setTrailerPlaying(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                    onClick={() => setTrailerPlaying(true)}
                     style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', backgroundColor: A, color: 'var(--accent-on)', border: 'none', fontSize: 12, letterSpacing: '0.08em', fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.2s' }}
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = AH)}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = A)}
