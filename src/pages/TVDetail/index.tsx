@@ -134,7 +134,29 @@ export default function TVDetail() {
   }
 
   if (loading) {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}><Spinner size={48} /></div>
+    return (
+      <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+        <div className="skeleton" style={{ height: 560 }} />
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px' }}>
+          <div className="detail-hero-info">
+            <div className="detail-poster">
+              <div className="skeleton" style={{ width: '100%', aspectRatio: '2/3' }} />
+            </div>
+            <div className="detail-info" style={{ flex: 1 }}>
+              <div className="skeleton" style={{ height: 18, width: 120, marginBottom: 16 }} />
+              <div className="skeleton" style={{ height: 42, width: '70%', marginBottom: 14 }} />
+              <div className="skeleton" style={{ height: 16, width: '40%', marginBottom: 24 }} />
+              <div className="skeleton" style={{ height: 14, width: '90%', marginBottom: 8 }} />
+              <div className="skeleton" style={{ height: 14, width: '60%', marginBottom: 28 }} />
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div className="skeleton" style={{ height: 44, width: 140 }} />
+                <div className="skeleton" style={{ height: 44, width: 44 }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (error || !show) {
@@ -162,8 +184,16 @@ export default function TVDetail() {
   const mainSeasons = show.seasons.filter(s => s.season_number > 0).sort((a, b) => a.season_number - b.season_number)
   const specials = show.seasons.filter(s => s.season_number === 0)
 
+  const ogImage = IMG.backdrop(show.backdrop_path, 'w780') ?? IMG.poster(show.poster_path, 'w500')
+
   return (
     <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+      <title>{show.name} — HOVIE</title>
+      <meta name="description" content={show.overview?.slice(0, 160)} />
+      <meta property="og:title" content={`${show.name} — HOVIE`} />
+      <meta property="og:description" content={show.overview?.slice(0, 160)} />
+      {ogImage && <meta property="og:image" content={ogImage} />}
+      <meta property="og:type" content="video.tv_show" />
 
       {/* Fullscreen trailer modal */}
       {trailerPlaying && trailerKey && (

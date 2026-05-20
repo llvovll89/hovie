@@ -131,12 +131,13 @@ export default function AuthModal({ mode, onClose, onSwitchMode }: Props) {
 
   return (
     <div
+      className="modal-bg-enter"
       style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)' }} />
 
-      <div style={{ position: 'relative', width: '100%', maxWidth: 440, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-2)', padding: '40px 36px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="modal-content-enter" style={{ position: 'relative', width: '100%', maxWidth: 440, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-2)', padding: '40px 36px', maxHeight: '90vh', overflowY: 'auto' }}>
         {/* Close */}
         <button onClick={onClose}
           style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 4 }}

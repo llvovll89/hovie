@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { getWatched, removeFromWatched, isFirebaseConfigured } from '../../lib/firebase'
 import { useAuthModal } from '../../contexts/AuthModalContext'
 import MovieCard from '../../components/ui/MovieCard'
-import Spinner from '../../components/ui/Spinner'
+import SkeletonCard from '../../components/ui/SkeletonCard'
 import StarRating from '../../components/ui/StarRating'
 import type { WatchedMovie } from '../../types'
 
@@ -42,7 +42,11 @@ export default function Watched() {
   }
 
   if (authLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}><Spinner size={40} /></div>
+    return (
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '80px 20px' }}>
+        <div className="movie-grid-4"><SkeletonCard count={8} /></div>
+      </div>
+    )
   }
 
   if (!user) {
@@ -137,7 +141,7 @@ export default function Watched() {
         )}
 
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}><Spinner size={40} /></div>
+          <div className="movie-grid-4"><SkeletonCard count={8} /></div>
         ) : sorted.length === 0 ? (
           <EmptyState
             icon="👁"

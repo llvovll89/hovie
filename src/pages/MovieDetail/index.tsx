@@ -9,6 +9,7 @@ import { IMG } from '../../lib/tmdb'
 import { addToWatchlist, removeFromWatchlist, checkInWatchlist, addToWatched, removeFromWatched, checkInWatched, updateWatchedRating, isFirebaseConfigured } from '../../lib/firebase'
 import MovieCard from '../../components/ui/MovieCard'
 import Spinner from '../../components/ui/Spinner'
+import SkeletonCard from '../../components/ui/SkeletonCard'
 import StarRating from '../../components/ui/StarRating'
 import StreamingInfo from './StreamingInfo'
 import CommentSection from './CommentSection'
@@ -126,7 +127,7 @@ export default function MovieDetail() {
   }
 
   if (loading) {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}><Spinner size={48} /></div>
+    return <MovieDetailSkeleton />
   }
 
   if (error || !movie) {
@@ -145,18 +146,29 @@ export default function MovieDetail() {
   const posterUrl = IMG.poster(movie.poster_path, 'w500')
   const year = movie.release_date?.split('-')[0]
   const runtime = movie.runtime ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m` : null
+  const ogImage = IMG.backdrop(movie.backdrop_path, 'w780') ?? IMG.poster(movie.poster_path, 'w500')
 
   return (
     <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+      <title>{movie.title} — HOVIE</title>
+      <meta name="description" content={movie.overview?.slice(0, 160)} />
+      <meta property="og:title" content={`${movie.title} — HOVIE`} />
+      <meta property="og:description" content={movie.overview?.slice(0, 160)} />
+      {ogImage && <meta property="og:image" content={ogImage} />}
+      <meta property="og:type" content="video.movie" />
 
       {/* ── Fullscreen trailer modal (fixed, above everything) ── */}
       {trailerPlaying && trailerKey && (
         <div
+          className="modal-bg-enter"
+          role="dialog"
+          aria-modal="true"
+          aria-label="예고편"
           style={{ position: 'fixed', inset: 0, zIndex: 9000, backgroundColor: 'rgba(0,0,0,0.97)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setTrailerPlaying(false) }}
         >
           {/* 16:9 responsive container */}
-          <div style={{ position: 'relative', width: '100%', maxWidth: 1100, padding: '0 20px' }}>
+          <div className="modal-content-enter" style={{ position: 'relative', width: '100%', maxWidth: 1100, padding: '0 20px' }}>
             <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
               <iframe
                 src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0`}
@@ -537,5 +549,51 @@ function HeartIcon({ filled }: { filled: boolean }) {
     <svg width="15" height="15" fill={filled ? 'var(--accent)' : 'none'} stroke={filled ? 'var(--accent)' : 'currentColor'} strokeWidth="1.8" viewBox="0 0 24 24">
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
     </svg>
+  )
+}
+
+function MovieDetailSkeleton() {
+  return (
+    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+      <div className="skeleton" style={{ height: 560 }} />
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px' }}>
+        <div className="detail-hero-info">
+          <div className="detail-poster">
+            <div className="skeleton" style={{ width: '100%', aspectRatio: '2/3' }} />
+          </div>
+          <div className="detail-info" style={{ flex: 1 }}>
+            <div className="skeleton" style={{ height: 18, width: 120, marginBottom: 16 }} />
+            <div className="skeleton" style={{ height: 42, width: '70%', marginBottom: 14 }} />
+            <div className="skeleton" style={{ height: 16, width: '40%', marginBottom: 24 }} />
+            <div className="skeleton" style={{ height: 14, width: '90%', marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 14, width: '85%', marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 14, width: '60%', marginBottom: 28 }} />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div className="skeleton" style={{ height: 44, width: 140 }} />
+              <div className="skeleton" style={{ height: 44, width: 44 }} />
+              <div className="skeleton" style={{ height: 44, width: 44 }} />
+            </div>
+          </div>
+        </div>
+        <div className="movie-detail-layout" style={{ padding: '0 0 80px' }}>
+          <div>
+            <div className="skeleton" style={{ height: 24, width: 80, marginBottom: 18 }} />
+            <div className="cast-grid">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <div className="skeleton" style={{ width: '100%', aspectRatio: '1/1', borderRadius: '50%', marginBottom: 8 }} />
+                  <div className="skeleton" style={{ height: 11, width: '80%', margin: '0 auto 4px' }} />
+                  <div className="skeleton" style={{ height: 10, width: '60%', margin: '0 auto' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="skeleton" style={{ height: 24, width: 100, marginBottom: 18 }} />
+            <SkeletonCard count={4} />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

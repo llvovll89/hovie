@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTrending } from '../../hooks/useTrending'
 import MovieCard from '../../components/ui/MovieCard'
-import Spinner from '../../components/ui/Spinner'
+import SkeletonCard from '../../components/ui/SkeletonCard'
 
 const A = 'var(--accent)'
 
@@ -21,13 +21,12 @@ export default function TrendingSection() {
             onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-4)'; e.currentTarget.style.borderBottomColor = 'var(--border-3)' }}
           >VIEW ALL</Link>
         </div>
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}><Spinner size={36} /></div>
-        ) : (
-          <div className="movie-grid-4">
-            {movies.map((movie, idx) => <MovieCard key={movie.id} movie={movie} rank={idx + 1} />)}
-          </div>
-        )}
+        <div className="movie-grid-4">
+          {loading
+            ? <SkeletonCard count={8} />
+            : movies.map((movie, idx) => <MovieCard key={movie.id} movie={movie} rank={idx + 1} />)
+          }
+        </div>
       </div>
     </section>
   )

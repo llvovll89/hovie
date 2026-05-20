@@ -37,7 +37,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         alignItems: 'center', pointerEvents: 'none',
       }}>
         {toasts.map(t => (
-          <div key={t.id} style={{
+          <div key={t.id} className="toast-enter" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
             padding: '10px 20px',
             backgroundColor: COLOR[t.type],
             color: '#fff',
@@ -49,6 +52,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             whiteSpace: 'nowrap',
             boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
           }}>
+            {t.type === 'success' && <span style={{ fontSize: 14 }}>✓</span>}
+            {t.type === 'error'   && <span style={{ fontSize: 14 }}>✕</span>}
             {t.message}
           </div>
         ))}

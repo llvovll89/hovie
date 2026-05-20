@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tmdb, IMG, normalizeTVShow } from '../../lib/tmdb'
 import MovieCard from '../../components/ui/MovieCard'
-import Spinner from '../../components/ui/Spinner'
+import SkeletonCard from '../../components/ui/SkeletonCard'
 import type { Movie, TVShow } from '../../types'
 
 const A = 'var(--accent)'
@@ -32,32 +32,31 @@ export default function Trending() {
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
 
       {loading ? (
-        <div style={{ height: 560, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Spinner size={48} />
+        <div style={{ height: 560, backgroundColor: 'var(--bg-elevated)', position: 'relative', overflow: 'hidden' }}>
+          <div className="skeleton" style={{ position: 'absolute', inset: 0 }} />
         </div>
       ) : hero ? (
         <TrendingHero movie={hero} timeWindow={timeWindow} onToggle={setTimeWindow} mediaType={mediaType} onMediaTypeToggle={setMediaType} />
       ) : null}
 
-      {!loading && rest.length > 0 && (
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '64px 20px 80px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 36 }}>
-            <div>
-              <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>
-                {timeWindow === 'week' ? 'This Week' : 'Today'}
-              </p>
-              <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>
-                더 많은 인기 {mediaType === 'tv' ? 'TV 시리즈' : '영화'}
-              </h2>
-            </div>
-          </div>
-          <div className="movie-grid-4">
-            {rest.map((movie, idx) => (
-              <MovieCard key={movie.id} movie={movie} rank={idx + 2} />
-            ))}
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '64px 20px 80px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 36 }}>
+          <div>
+            <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>
+              {timeWindow === 'week' ? 'This Week' : 'Today'}
+            </p>
+            <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>
+              더 많은 인기 {mediaType === 'tv' ? 'TV 시리즈' : '영화'}
+            </h2>
           </div>
         </div>
-      )}
+        <div className="movie-grid-4">
+          {loading
+            ? <SkeletonCard count={19} />
+            : rest.map((movie, idx) => <MovieCard key={movie.id} movie={movie} rank={idx + 2} />)
+          }
+        </div>
+      </div>
     </div>
   )
 }

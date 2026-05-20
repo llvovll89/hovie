@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { tmdb } from '../lib/tmdb'
 import type { MovieDetail, CastMember, CrewMember, WatchProviderResult, Movie, VideoItem } from '../types'
 
-interface MovieDetailState {
-  movie: MovieDetail | null
+interface MovieDetailData {
+  movie: MovieDetail
   cast: CastMember[]
   directors: CrewMember[]
   providers: WatchProviderResult | null
@@ -11,8 +11,6 @@ interface MovieDetailState {
   recommendations: Movie[]
   similar: Movie[]
   trailerKey: string | null
-  loading: boolean
-  error: string | null
 }
 
 const REGION_PRIORITY = ['KR', 'US', 'JP', 'GB']
@@ -28,7 +26,6 @@ function pickProviders(results: Record<string, WatchProviderResult>) {
 
 function pickTrailer(videos: VideoItem[]): string | null {
   const youtubeVideos = videos.filter(v => v.site === 'YouTube')
-  // Priority: Korean trailer → English trailer → any trailer → Korean teaser → English teaser
   const pick = (lang: string, type: string) => youtubeVideos.find(v => v.iso_639_1 === lang && v.type === type)
   return (
     pick('ko', 'Trailer')?.key ??
@@ -41,52 +38,57 @@ function pickTrailer(videos: VideoItem[]): string | null {
   )
 }
 
-export function useMovieDetail(id: number): MovieDetailState {
-  const [state, setState] = useState<MovieDetailState>({
-    movie: null, cast: [], directors: [], providers: null, providerRegion: null,
-    recommendations: [], similar: [], trailerKey: null, loading: true, error: null,
+async function fetchMovieDetail(id: number): Promise<MovieDetailData> {
+  const [detail, credits, providers, recs, similar, videos] = await Promise.all([
+    tmdb.detail(id),
+    tmdb.credits(id),
+    tmdb.watchProviders(id),
+    tmdb.recommendations(id),
+    tmdb.similar(id),
+    tmdb.videos(id),
+  ])
+
+  const castData = (credits.cast as CastMember[]).slice(0, 12)
+  const directors = (credits.crew as CrewMember[]).filter(c => c.job === 'Director')
+  const results = providers.results as Record<string, WatchProviderResult>
+  const { data: providerData, region } = pickProviders(results)
+
+  const recMovies = (recs.results as Movie[]).slice(0, 12)
+  const simMovies = (similar.results as Movie[]).slice(0, 6)
+  const seen = new Set(recMovies.map(m => m.id))
+  const simUnique = simMovies.filter(m => !seen.has(m.id))
+
+  const trailerKey = pickTrailer(videos.results as VideoItem[])
+
+  return {
+    movie: detail as MovieDetail,
+    cast: castData,
+    directors,
+    providers: providerData,
+    providerRegion: region,
+    recommendations: recMovies,
+    similar: simUnique,
+    trailerKey,
+  }
+}
+
+export function useMovieDetail(id: number) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['movie', id],
+    queryFn: () => fetchMovieDetail(id),
+    enabled: !!id,
   })
 
-  useEffect(() => {
-    if (!id) return
-    setState(prev => ({ ...prev, loading: true, error: null }))
-
-    Promise.all([
-      tmdb.detail(id),
-      tmdb.credits(id),
-      tmdb.watchProviders(id),
-      tmdb.recommendations(id),
-      tmdb.similar(id),
-      tmdb.videos(id),
-    ])
-      .then(([detail, credits, providers, recs, similar, videos]) => {
-        const castData = (credits.cast as CastMember[]).slice(0, 12)
-        const directors = (credits.crew as CrewMember[]).filter(c => c.job === 'Director')
-        const results = providers.results as Record<string, WatchProviderResult>
-        const { data: providerData, region } = pickProviders(results)
-
-        const recMovies = (recs.results as Movie[]).slice(0, 12)
-        const simMovies = (similar.results as Movie[]).slice(0, 6)
-        const seen = new Set(recMovies.map(m => m.id))
-        const simUnique = simMovies.filter(m => !seen.has(m.id))
-
-        const trailerKey = pickTrailer(videos.results as VideoItem[])
-
-        setState({
-          movie: detail as MovieDetail,
-          cast: castData,
-          directors,
-          providers: providerData,
-          providerRegion: region,
-          recommendations: recMovies,
-          similar: simUnique,
-          trailerKey,
-          loading: false,
-          error: null,
-        })
-      })
-      .catch(() => setState(prev => ({ ...prev, loading: false, error: '영화 정보를 불러오는 데 실패했습니다.' })))
-  }, [id])
-
-  return state
+  return {
+    movie: data?.movie ?? null,
+    cast: data?.cast ?? [],
+    directors: data?.directors ?? [],
+    providers: data?.providers ?? null,
+    providerRegion: data?.providerRegion ?? null,
+    recommendations: data?.recommendations ?? [],
+    similar: data?.similar ?? [],
+    trailerKey: data?.trailerKey ?? null,
+    loading: isLoading,
+    error: error ? '영화 정보를 불러오는 데 실패했습니다.' : null,
+  }
 }

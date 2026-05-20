@@ -83,7 +83,7 @@ export default function Layout() {
       <ToastProvider>
         <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', color: 'var(--text)' }}>
           <Navbar />
-          <main style={{ paddingTop: isHome ? 0 : 68 }}>
+          <main key={pathname} className="page-enter" style={{ paddingTop: isHome ? 0 : 68 }}>
             <Outlet />
           </main>
           <Footer />

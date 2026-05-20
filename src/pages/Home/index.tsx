@@ -13,6 +13,10 @@ export default function Home() {
   const navigate = useNavigate()
   return (
     <>
+      <title>HOVIE — 영화의 모든 것</title>
+      <meta name="description" content="트렌딩 영화 탐색, 스트리밍 정보 확인, 위시리스트 관리까지 — HOVIE에서 시작하세요." />
+      <meta property="og:title" content="HOVIE — 영화의 모든 것" />
+      <meta property="og:description" content="트렌딩 영화 탐색, 스트리밍 정보 확인, 위시리스트 관리까지 — HOVIE에서 시작하세요." />
       <Hero />
       <TrendingSection />
       <FeaturesSection />

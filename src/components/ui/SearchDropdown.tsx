@@ -136,7 +136,7 @@ export default function SearchDropdown({ placeholder = '영화 제목을 검색�
           />
           {loading && <div style={{ position: 'absolute', right: 12, pointerEvents: 'none' }}><Spinner size={14} /></div>}
           {!loading && query && (
-            <button type="button" onClick={() => { setQuery(''); setResults([]); setOpen(false) }}
+            <button type="button" aria-label="검색어 지우기" onClick={() => { setQuery(''); setResults([]); setOpen(false) }}
               style={{ position: 'absolute', right: 10, background: 'none', border: 'none', color: 'var(--text-4)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
           )}
         </div>

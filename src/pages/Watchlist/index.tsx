@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { getWatchlist, removeFromWatchlist, isFirebaseConfigured } from '../../lib/firebase'
 import { useAuthModal } from '../../contexts/AuthModalContext'
 import MovieCard from '../../components/ui/MovieCard'
-import Spinner from '../../components/ui/Spinner'
+import SkeletonCard from '../../components/ui/SkeletonCard'
 import type { Movie } from '../../types'
 
 const A = 'var(--accent)'
@@ -32,7 +32,11 @@ export default function Watchlist() {
   }
 
   if (authLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}><Spinner size={40} /></div>
+    return (
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '80px 20px' }}>
+        <div className="movie-grid-4"><SkeletonCard count={8} /></div>
+      </div>
+    )
   }
 
   if (!user) {
@@ -81,7 +85,7 @@ export default function Watchlist() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}><Spinner size={40} /></div>
+          <div className="movie-grid-4"><SkeletonCard count={8} /></div>
         ) : movies.length === 0 ? (
           <EmptyState icon="♡" title="저장된 영화가 없습니다" desc="영화 상세 페이지에서 ♡ 버튼을 눌러 위시리스트에 추가하세요." />
         ) : (
@@ -92,6 +96,7 @@ export default function Watchlist() {
                 <button
                   onClick={() => handleRemove(movie.id)}
                   title="위시리스트에서 제거"
+                  aria-label={`${movie.title} 위시리스트에서 제거`}
                   style={{ position: 'absolute', top: 10, right: 10, width: 28, height: 28, backgroundColor: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.2)', color: A, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', transition: 'background-color 0.2s', zIndex: 10 }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(220,50,50,0.7)')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.7)')}

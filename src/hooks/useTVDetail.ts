@@ -1,17 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { tmdb, normalizeTVShow } from '../lib/tmdb'
 import type { TVDetail, CastMember, WatchProviderResult, Movie, VideoItem, TVShow } from '../types'
 
-interface TVDetailState {
-  show: TVDetail | null
+interface TVDetailData {
+  show: TVDetail
   cast: CastMember[]
   providers: WatchProviderResult | null
   providerRegion: string | null
   recommendations: Movie[]
   similar: Movie[]
   trailerKey: string | null
-  loading: boolean
-  error: string | null
 }
 
 const REGION_PRIORITY = ['KR', 'US', 'JP', 'GB']
@@ -47,58 +45,62 @@ interface AggregateCast {
   roles: { character: string; episode_count: number }[]
 }
 
-export function useTVDetail(id: number): TVDetailState {
-  const [state, setState] = useState<TVDetailState>({
-    show: null, cast: [], providers: null, providerRegion: null,
-    recommendations: [], similar: [], trailerKey: null, loading: true, error: null,
+async function fetchTVDetail(id: number): Promise<TVDetailData> {
+  const [detail, credits, providers, recs, similar, videos] = await Promise.all([
+    tmdb.tvDetail(id),
+    tmdb.tvCredits(id),
+    tmdb.tvWatchProviders(id),
+    tmdb.tvRecommendations(id),
+    tmdb.tvSimilar(id),
+    tmdb.tvVideos(id),
+  ])
+
+  const castData: CastMember[] = (credits.cast as AggregateCast[])
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 12)
+    .map(m => ({
+      id: m.id,
+      name: m.name,
+      profile_path: m.profile_path,
+      order: m.order,
+      character: m.roles[0]?.character ?? '',
+    }))
+
+  const { data: providerData, region } = pickProviders(
+    providers.results as Record<string, WatchProviderResult>
+  )
+
+  const recShows = (recs.results as TVShow[]).slice(0, 12).map(normalizeTVShow)
+  const simShows = (similar.results as TVShow[]).slice(0, 6).map(normalizeTVShow)
+  const seen = new Set(recShows.map(m => m.id))
+
+  return {
+    show: detail as TVDetail,
+    cast: castData,
+    providers: providerData,
+    providerRegion: region,
+    recommendations: recShows,
+    similar: simShows.filter(m => !seen.has(m.id)),
+    trailerKey: pickTrailer(videos.results as VideoItem[]),
+  }
+}
+
+export function useTVDetail(id: number) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['tv', id],
+    queryFn: () => fetchTVDetail(id),
+    enabled: !!id,
   })
 
-  useEffect(() => {
-    if (!id) return
-    setState(prev => ({ ...prev, loading: true, error: null }))
-
-    Promise.all([
-      tmdb.tvDetail(id),
-      tmdb.tvCredits(id),
-      tmdb.tvWatchProviders(id),
-      tmdb.tvRecommendations(id),
-      tmdb.tvSimilar(id),
-      tmdb.tvVideos(id),
-    ])
-      .then(([detail, credits, providers, recs, similar, videos]) => {
-        const castData: CastMember[] = (credits.cast as AggregateCast[])
-          .sort((a, b) => a.order - b.order)
-          .slice(0, 12)
-          .map(m => ({
-            id: m.id,
-            name: m.name,
-            profile_path: m.profile_path,
-            order: m.order,
-            character: m.roles[0]?.character ?? '',
-          }))
-
-        const { data: providerData, region } = pickProviders(
-          providers.results as Record<string, WatchProviderResult>
-        )
-
-        const recShows = (recs.results as TVShow[]).slice(0, 12).map(normalizeTVShow)
-        const simShows = (similar.results as TVShow[]).slice(0, 6).map(normalizeTVShow)
-        const seen = new Set(recShows.map(m => m.id))
-
-        setState({
-          show: detail as TVDetail,
-          cast: castData,
-          providers: providerData,
-          providerRegion: region,
-          recommendations: recShows,
-          similar: simShows.filter(m => !seen.has(m.id)),
-          trailerKey: pickTrailer(videos.results as VideoItem[]),
-          loading: false,
-          error: null,
-        })
-      })
-      .catch(() => setState(prev => ({ ...prev, loading: false, error: 'TV 시리즈 정보를 불러오는 데 실패했습니다.' })))
-  }, [id])
-
-  return state
+  return {
+    show: data?.show ?? null,
+    cast: data?.cast ?? [],
+    providers: data?.providers ?? null,
+    providerRegion: data?.providerRegion ?? null,
+    recommendations: data?.recommendations ?? [],
+    similar: data?.similar ?? [],
+    trailerKey: data?.trailerKey ?? null,
+    loading: isLoading,
+    error: error ? 'TV 시리즈 정보를 불러오는 데 실패했습니다.' : null,
+  }
 }
