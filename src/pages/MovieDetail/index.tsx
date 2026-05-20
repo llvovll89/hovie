@@ -64,9 +64,14 @@ export default function MovieDetail() {
 
   useEffect(() => {
     if (!trailerPlaying) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setTrailerPlaying(false) }
     document.addEventListener('keydown', fn)
-    return () => document.removeEventListener('keydown', fn)
+    return () => {
+      document.body.style.overflow = prev
+      document.removeEventListener('keydown', fn)
+    }
   }, [trailerPlaying])
 
   async function saveWatchedEntry() {
