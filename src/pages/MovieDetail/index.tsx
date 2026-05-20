@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useMovieDetail } from '../../hooks/useMovieDetail'
 import { useAuth } from '../../hooks/useAuth'
@@ -157,8 +158,7 @@ export default function MovieDetail() {
       {ogImage && <meta property="og:image" content={ogImage} />}
       <meta property="og:type" content="video.movie" />
 
-      {/* ── Fullscreen trailer modal (fixed, above everything) ── */}
-      {trailerPlaying && trailerKey && (
+      {trailerPlaying && trailerKey && createPortal(
         <div
           className="modal-bg-enter"
           role="dialog"
@@ -167,7 +167,6 @@ export default function MovieDetail() {
           style={{ position: 'fixed', inset: 0, zIndex: 9000, backgroundColor: 'rgba(0,0,0,0.97)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setTrailerPlaying(false) }}
         >
-          {/* 16:9 responsive container */}
           <div className="modal-content-enter" style={{ position: 'relative', width: '100%', maxWidth: 1100, padding: '0 20px' }}>
             <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
               <iframe
@@ -190,7 +189,8 @@ export default function MovieDetail() {
             </svg>
             닫기 (ESC)
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Backdrop */}

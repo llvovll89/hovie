@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTVDetail } from '../../hooks/useTVDetail'
 import { useAuth } from '../../hooks/useAuth'
@@ -195,13 +196,16 @@ export default function TVDetail() {
       {ogImage && <meta property="og:image" content={ogImage} />}
       <meta property="og:type" content="video.tv_show" />
 
-      {/* Fullscreen trailer modal */}
-      {trailerPlaying && trailerKey && (
+      {trailerPlaying && trailerKey && createPortal(
         <div
+          className="modal-bg-enter"
+          role="dialog"
+          aria-modal="true"
+          aria-label="예고편"
           style={{ position: 'fixed', inset: 0, zIndex: 9000, backgroundColor: 'rgba(0,0,0,0.97)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setTrailerPlaying(false) }}
         >
-          <div style={{ position: 'relative', width: '100%', maxWidth: 1100, padding: '0 20px' }}>
+          <div className="modal-content-enter" style={{ position: 'relative', width: '100%', maxWidth: 1100, padding: '0 20px' }}>
             <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
               <iframe
                 src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0`}
@@ -223,7 +227,8 @@ export default function TVDetail() {
             </svg>
             닫기 (ESC)
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Backdrop */}
