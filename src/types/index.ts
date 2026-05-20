@@ -94,6 +94,16 @@ export interface MovieDetail {
   popularity: number
   production_countries: { iso_3166_1: string; name: string }[]
   spoken_languages: { name: string; iso_639_1: string }[]
+  belongs_to_collection: { id: number; name: string; poster_path: string | null; backdrop_path: string | null } | null
+}
+
+export interface CollectionDetail {
+  id: number
+  name: string
+  overview: string
+  poster_path: string | null
+  backdrop_path: string | null
+  parts: Movie[]
 }
 
 export interface Genre {

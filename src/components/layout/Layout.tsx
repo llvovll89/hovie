@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useLocation, Link } from 'react-router-dom'
 import Navbar from './Navbar'
 import Footer from './Footer'
@@ -77,6 +77,10 @@ export default function Layout() {
   const { pathname } = useLocation()
   const isHome = pathname === '/'
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | null>(null)
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname])
 
   return (
     <AuthModalContext.Provider value={{ openSignIn: () => setAuthMode('signin'), openSignUp: () => setAuthMode('signup') }}>

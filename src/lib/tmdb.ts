@@ -108,6 +108,12 @@ export const tmdb = {
 
   personTVCredits: (id: number) =>
     request<{ cast: unknown[]; crew: unknown[] }>(`/person/${id}/tv_credits`),
+
+  collection: (id: number) =>
+    request<{ id: number; name: string; overview: string; poster_path: string | null; backdrop_path: string | null; parts: unknown[] }>(`/collection/${id}`),
+
+  tvSeason: (showId: number, seasonNumber: number) =>
+    request<{ id: number; name: string; season_number: number; episodes: unknown[] }>(`/tv/${showId}/season/${seasonNumber}`),
 }
 
 export function normalizeTVShow(show: TVShow): Movie {

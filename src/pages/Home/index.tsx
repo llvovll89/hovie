@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import Hero from './Hero'
 import TrendingSection from './TrendingSection'
 import FeaturesSection from './FeaturesSection'
+import RecommendedSection from './RecommendedSection'
 import { useAuthModal } from '../../contexts/AuthModalContext'
 
 const A = 'var(--accent)'
@@ -19,6 +20,7 @@ export default function Home() {
       <meta property="og:description" content="트렌딩 영화 탐색, 스트리밍 정보 확인, 위시리스트 관리까지 — HOVIE에서 시작하세요." />
       <Hero />
       <TrendingSection />
+      <RecommendedSection />
       <FeaturesSection />
       <section style={{ padding: '100px 20px', borderTop: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,153,255,0.04) 0%, transparent 70%)' }} />

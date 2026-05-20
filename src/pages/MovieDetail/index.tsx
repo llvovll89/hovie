@@ -28,7 +28,7 @@ export default function MovieDetail() {
   const { showToast } = useToast()
   const movieId = Number(id)
 
-  const { movie, cast, directors, providers, providerRegion, recommendations, similar, trailerKey, loading, error } = useMovieDetail(movieId)
+  const { movie, cast, directors, providers, providerRegion, recommendations, similar, trailerKey, collection, loading, error } = useMovieDetail(movieId)
 
   const [inWatchlist, setInWatchlist] = useState(false)
   const [watchlistLoading, setWatchlistLoading] = useState(false)
@@ -453,8 +453,48 @@ export default function MovieDetail() {
           </div>
         </div>
 
+        {collection && collection.parts.length > 1 && (
+          <CollectionRow collection={collection} currentId={movieId} />
+        )}
         {recommendations.length > 0 && <MovieRow label="Recommendations" title="이 영화를 좋아한다면" movies={recommendations} />}
         {similar.length > 0 && <MovieRow label="Similar" title="비슷한 영화" movies={similar} />}
+      </div>
+    </div>
+  )
+}
+
+function CollectionRow({ collection, currentId }: { collection: { id: number; name: string; parts: { id: number; title?: string; poster_path: string | null; release_date?: string; vote_average?: number }[] }; currentId: number }) {
+  const others = collection.parts.filter(p => p.id !== currentId).sort((a, b) => {
+    const aYear = a.release_date?.slice(0, 4) ?? '0'
+    const bYear = b.release_date?.slice(0, 4) ?? '0'
+    return aYear.localeCompare(bYear)
+  })
+  if (others.length === 0) return null
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 52, marginBottom: 60 }}>
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ color: 'var(--accent)', fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>Collection</p>
+        <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          {collection.name}
+        </h2>
+      </div>
+      <div className="similar-grid">
+        {others.map(part => (
+          <MovieCard key={part.id} movie={{
+            id: part.id,
+            title: part.title ?? '',
+            original_title: part.title ?? '',
+            poster_path: part.poster_path,
+            backdrop_path: null,
+            vote_average: part.vote_average ?? 0,
+            vote_count: 0,
+            release_date: part.release_date ?? '',
+            genre_ids: [],
+            overview: '',
+            popularity: 0,
+            adult: false,
+          }} />
+        ))}
       </div>
     </div>
   )
@@ -513,7 +553,7 @@ function CastCard({ member }: { member: { id: number; name: string; character: s
         onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
       >
-        {img ? <img src={img} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>}
+        {img ? <img src={img} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>}
       </div>
       <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-2)', margin: '0 0 2px', lineHeight: 1.3 }}>{member.name}</p>
       <p style={{ fontSize: 10, color: 'var(--text-4)', margin: 0, lineHeight: 1.3 }}>{member.character}</p>

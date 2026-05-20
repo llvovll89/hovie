@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { tmdb } from '../lib/tmdb'
-import type { MovieDetail, CastMember, CrewMember, WatchProviderResult, Movie, VideoItem } from '../types'
+import type { MovieDetail, CastMember, CrewMember, WatchProviderResult, Movie, VideoItem, CollectionDetail } from '../types'
 
 interface MovieDetailData {
   movie: MovieDetail
@@ -11,6 +11,7 @@ interface MovieDetailData {
   recommendations: Movie[]
   similar: Movie[]
   trailerKey: string | null
+  collection: CollectionDetail | null
 }
 
 const REGION_PRIORITY = ['KR', 'US', 'JP', 'GB']
@@ -60,8 +61,17 @@ async function fetchMovieDetail(id: number): Promise<MovieDetailData> {
 
   const trailerKey = pickTrailer(videos.results as VideoItem[])
 
+  const movieDetail = detail as MovieDetail
+  let collection: CollectionDetail | null = null
+  if (movieDetail.belongs_to_collection?.id) {
+    try {
+      const col = await tmdb.collection(movieDetail.belongs_to_collection.id)
+      collection = { ...col, parts: (col.parts as Movie[]) } as CollectionDetail
+    } catch { /* ignore */ }
+  }
+
   return {
-    movie: detail as MovieDetail,
+    movie: movieDetail,
     cast: castData,
     directors,
     providers: providerData,
@@ -69,6 +79,7 @@ async function fetchMovieDetail(id: number): Promise<MovieDetailData> {
     recommendations: recMovies,
     similar: simUnique,
     trailerKey,
+    collection,
   }
 }
 
@@ -88,6 +99,7 @@ export function useMovieDetail(id: number) {
     recommendations: data?.recommendations ?? [],
     similar: data?.similar ?? [],
     trailerKey: data?.trailerKey ?? null,
+    collection: data?.collection ?? null,
     loading: isLoading,
     error: error ? '영화 정보를 불러오는 데 실패했습니다.' : null,
   }

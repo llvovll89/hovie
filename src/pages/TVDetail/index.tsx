@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTVDetail } from '../../hooks/useTVDetail'
 import { useAuth } from '../../hooks/useAuth'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { useAuthModal } from '../../contexts/AuthModalContext'
 import { useToast } from '../../contexts/ToastContext'
-import { IMG } from '../../lib/tmdb'
+import { IMG, tmdb } from '../../lib/tmdb'
 import { addToWatchlist, removeFromWatchlist, checkInWatchlist, addToWatched, removeFromWatched, checkInWatched, updateWatchedRating, isFirebaseConfigured } from '../../lib/firebase'
 import MovieCard from '../../components/ui/MovieCard'
 import Spinner from '../../components/ui/Spinner'
@@ -480,9 +480,9 @@ export default function TVDetail() {
 
             {mainSeasons.length > 0 && (
               <SectionBlock title={`시즌 (${mainSeasons.length})`}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+                <div>
                   {[...mainSeasons, ...specials].map(season => (
-                    <SeasonCard key={season.id} season={season} />
+                    <SeasonAccordion key={season.id} showId={tvId} season={season} />
                   ))}
                 </div>
               </SectionBlock>
@@ -526,19 +526,107 @@ function ShowRow({ label, title, shows }: { label: string; title: string; shows:
   )
 }
 
-function SeasonCard({ season }: { season: TVSeason }) {
+interface EpisodeItem {
+  id: number
+  episode_number: number
+  name: string
+  overview: string
+  still_path: string | null
+  air_date: string | null
+  runtime: number | null
+  vote_average: number
+}
+
+function SeasonAccordion({ showId, season }: { showId: number; season: TVSeason }) {
+  const [open, setOpen] = useState(false)
+  const [episodes, setEpisodes] = useState<EpisodeItem[]>([])
+  const [loading, setLoading] = useState(false)
   const posterUrl = season.poster_path ? `https://image.tmdb.org/t/p/w185${season.poster_path}` : null
   const year = season.air_date?.split('-')[0]
+
+  const loadEpisodes = useCallback(async () => {
+    if (episodes.length > 0) return
+    setLoading(true)
+    try {
+      const data = await tmdb.tvSeason(showId, season.season_number)
+      setEpisodes((data.episodes as EpisodeItem[]) ?? [])
+    } catch { /* ignore */ } finally { setLoading(false) }
+  }, [showId, season.season_number, episodes.length])
+
+  function handleToggle() {
+    if (!open && episodes.length === 0) loadEpisodes()
+    setOpen(o => !o)
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ aspectRatio: '2/3', overflow: 'hidden', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', marginBottom: 6 }}>
-        {posterUrl
-          ? <img src={posterUrl} alt={season.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📺</div>
+    <div style={{ border: '1px solid var(--border)', marginBottom: 6, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={handleToggle}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--bg-elevated)', border: 'none', color: 'var(--text)', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}
+        onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--bg-hover)')}
+        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--bg-elevated)')}
+      >
+        <div style={{ width: 40, height: 60, flexShrink: 0, overflow: 'hidden', backgroundColor: 'var(--bg-surface)' }}>
+          {posterUrl
+            ? <img src={posterUrl} alt={season.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>📺</div>
+          }
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', lineHeight: 1.3 }}>{season.name}</p>
+          <p style={{ fontSize: 11, color: 'var(--text-4)', margin: 0 }}>{season.episode_count}편{year ? ` · ${year}` : ''}</p>
+        </div>
+        <svg width="14" height="14" fill="none" stroke="var(--text-4)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{ backgroundColor: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+          {loading ? (
+            <div style={{ padding: '20px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 56, borderRadius: 2 }} />)}
+            </div>
+          ) : episodes.length === 0 ? (
+            <p style={{ padding: '16px 14px', fontSize: 13, color: 'var(--text-4)', margin: 0 }}>에피소드 정보가 없습니다.</p>
+          ) : (
+            <div>
+              {episodes.map(ep => <EpisodeRow key={ep.id} ep={ep} />)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EpisodeRow({ ep }: { ep: EpisodeItem }) {
+  const stillUrl = ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : null
+  const [imgError, setImgError] = useState(false)
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ width: 96, height: 54, flexShrink: 0, backgroundColor: 'var(--bg-elevated)', overflow: 'hidden' }}>
+        {stillUrl && !imgError
+          ? <img src={stillUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" onError={() => setImgError(true)} />
+          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--text-4)' }}>▶</div>
         }
       </div>
-      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', margin: '0 0 2px', lineHeight: 1.3 }}>{season.name}</p>
-      <p style={{ fontSize: 10, color: 'var(--text-4)', margin: 0 }}>{season.episode_count}편{year ? ` · ${year}` : ''}</p>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+          <span style={{ fontSize: 10, color: 'var(--accent)', letterSpacing: '0.1em', flexShrink: 0 }}>E{String(ep.episode_number).padStart(2, '0')}</span>
+          <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ep.name}</p>
+        </div>
+        {ep.overview && (
+          <p style={{ fontSize: 11, color: 'var(--text-4)', margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+            {ep.overview}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          {ep.runtime && <span style={{ fontSize: 10, color: 'var(--text-4)' }}>{ep.runtime}분</span>}
+          {ep.vote_average > 0 && <span style={{ fontSize: 10, color: 'var(--accent)' }}>★ {ep.vote_average.toFixed(1)}</span>}
+          {ep.air_date && <span style={{ fontSize: 10, color: 'var(--text-4)' }}>{ep.air_date}</span>}
+        </div>
+      </div>
     </div>
   )
 }
@@ -589,7 +677,7 @@ function CastCard({ member }: { member: { id: number; name: string; character: s
         onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
       >
-        {img ? <img src={img} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>}
+        {img ? <img src={img} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>}
       </div>
       <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-2)', margin: '0 0 2px', lineHeight: 1.3 }}>{member.name}</p>
       <p style={{ fontSize: 10, color: 'var(--text-4)', margin: 0, lineHeight: 1.3 }}>{member.character}</p>
