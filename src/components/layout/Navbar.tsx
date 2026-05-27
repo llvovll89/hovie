@@ -167,18 +167,24 @@ export default function Navbar() {
                     SIGN OUT
                   </button>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Link to="/watchlist" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', border: '1px solid var(--border-2)', color: 'var(--text-3)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', transition: 'all 0.2s' }}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Link to="/watchlist" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', border: '1px solid var(--border-2)', color: 'var(--text-3)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', transition: 'all 0.2s', minWidth: 90 }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = A; e.currentTarget.style.color = A }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-2)'; e.currentTarget.style.color = 'var(--text-3)' }}
                   >
                     <span>♡</span> 위시리스트
                   </Link>
-                  <Link to="/watched" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', border: '1px solid var(--border-2)', color: 'var(--text-3)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', transition: 'all 0.2s' }}
+                  <Link to="/watched" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', border: '1px solid var(--border-2)', color: 'var(--text-3)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', transition: 'all 0.2s', minWidth: 90 }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = A; e.currentTarget.style.color = A }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-2)'; e.currentTarget.style.color = 'var(--text-3)' }}
                   >
                     <span>👁</span> 시청 완료
+                  </Link>
+                  <Link to="/stats" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', border: '1px solid var(--border-2)', color: 'var(--text-3)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', transition: 'all 0.2s', minWidth: 90 }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = A; e.currentTarget.style.color = A }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-2)'; e.currentTarget.style.color = 'var(--text-3)' }}
+                  >
+                    <span>📊</span> 통계
                   </Link>
                 </div>
               </div>
@@ -270,6 +276,13 @@ function UserMenu({ user }: { user: { photoURL: string | null; displayName: stri
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-2)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }}
             >
               <span style={{ color: A, fontSize: 14 }}>👁</span> 시청 완료
+            </Link>
+            <Link to="/stats" onClick={() => setOpen(false)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', textDecoration: 'none', color: 'var(--text-2)', fontSize: 13, transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-2)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }}
+            >
+              <span style={{ color: A, fontSize: 14 }}>📊</span> 시청 통계
             </Link>
           </div>
           <div style={{ borderTop: '1px solid var(--border)', padding: '6px 0' }}>

@@ -114,6 +114,22 @@ export const tmdb = {
 
   tvSeason: (showId: number, seasonNumber: number) =>
     request<{ id: number; name: string; season_number: number; episodes: unknown[] }>(`/tv/${showId}/season/${seasonNumber}`),
+
+  // ── 추가 데이터 ─────────────────────────────────────────────
+  keywords: (id: number) =>
+    request<{ keywords: { id: number; name: string }[] }>(`/movie/${id}/keywords`),
+
+  externalIds: (id: number) =>
+    request<{ imdb_id: string | null; instagram_id: string | null; twitter_id: string | null }>(`/movie/${id}/external_ids`),
+
+  movieReviews: (id: number) =>
+    request<{ results: unknown[]; total_results: number }>(`/movie/${id}/reviews`),
+
+  tvKeywords: (id: number) =>
+    request<{ results: { id: number; name: string }[] }>(`/tv/${id}/keywords`),
+
+  tvExternalIds: (id: number) =>
+    request<{ imdb_id: string | null; instagram_id: string | null; twitter_id: string | null }>(`/tv/${id}/external_ids`),
 }
 
 export function normalizeTVShow(show: TVShow): Movie {

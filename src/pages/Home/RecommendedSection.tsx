@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getWatched, isFirebaseConfigured } from '../../lib/firebase'
 import { tmdb } from '../../lib/tmdb'
+import { useToast } from '../../contexts/ToastContext'
 import SkeletonCard from '../../components/ui/SkeletonCard'
 import MovieCard from '../../components/ui/MovieCard'
 import type { WatchedMovie, Movie } from '../../types'
@@ -26,6 +27,7 @@ function buildTopGenres(movies: WatchedMovie[]): number[] {
 
 export default function RecommendedSection() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(false)
   const [ready, setReady] = useState(false)
@@ -50,7 +52,7 @@ export default function RecommendedSection() {
         setMovies(results)
         setReady(true)
       })
-      .catch(() => setReady(true))
+      .catch(() => { setReady(true); showToast('추천 영화를 불러오지 못했습니다.', 'error') })
       .finally(() => setLoading(false))
   }, [user])
 

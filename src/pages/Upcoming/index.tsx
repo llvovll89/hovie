@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { tmdb, IMG } from '../../lib/tmdb'
 import MovieCard from '../../components/ui/MovieCard'
 import Spinner from '../../components/ui/Spinner'
+import { useToast } from '../../contexts/ToastContext'
 import type { Movie } from '../../types'
 
 const A = 'var(--accent)'
@@ -25,6 +26,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function Upcoming() {
+  const { showToast } = useToast()
   const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -42,7 +44,7 @@ export default function Upcoming() {
         setTotalPages(Math.min(d.total_pages, 8))
         setTotalResults(d.total_results)
       })
-      .catch(console.error)
+      .catch(() => showToast('개봉 예정작을 불러오지 못했습니다.', 'error'))
       .finally(() => { setLoading(false); setLoadingMore(false) })
   }, [page])
 

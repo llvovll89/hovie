@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { tmdb } from '../lib/tmdb'
-import type { MovieDetail, CastMember, CrewMember, WatchProviderResult, Movie, VideoItem, CollectionDetail } from '../types'
+import type { MovieDetail, CastMember, CrewMember, WatchProviderResult, Movie, VideoItem, CollectionDetail, Keyword, ExternalIds, TMDBReview } from '../types'
 
 interface MovieDetailData {
   movie: MovieDetail
@@ -12,6 +12,9 @@ interface MovieDetailData {
   similar: Movie[]
   trailerKey: string | null
   collection: CollectionDetail | null
+  keywords: Keyword[]
+  externalIds: ExternalIds | null
+  tmdbReviews: TMDBReview[]
 }
 
 const REGION_PRIORITY = ['KR', 'US', 'JP', 'GB']
@@ -40,13 +43,16 @@ function pickTrailer(videos: VideoItem[]): string | null {
 }
 
 async function fetchMovieDetail(id: number): Promise<MovieDetailData> {
-  const [detail, credits, providers, recs, similar, videos] = await Promise.all([
+  const [detail, credits, providers, recs, similar, videos, keywords, externalIds, reviews] = await Promise.all([
     tmdb.detail(id),
     tmdb.credits(id),
     tmdb.watchProviders(id),
     tmdb.recommendations(id),
     tmdb.similar(id),
     tmdb.videos(id),
+    tmdb.keywords(id).catch(() => ({ keywords: [] })),
+    tmdb.externalIds(id).catch(() => ({ imdb_id: null, instagram_id: null, twitter_id: null })),
+    tmdb.movieReviews(id).catch(() => ({ results: [], total_results: 0 })),
   ])
 
   const castData = (credits.cast as CastMember[]).slice(0, 12)
@@ -70,6 +76,10 @@ async function fetchMovieDetail(id: number): Promise<MovieDetailData> {
     } catch { /* ignore */ }
   }
 
+  const keywordList = (keywords.keywords as Keyword[]).slice(0, 20)
+  const extIds = externalIds as ExternalIds
+  const tmdbReviews = (reviews.results as TMDBReview[]).slice(0, 5)
+
   return {
     movie: movieDetail,
     cast: castData,
@@ -80,6 +90,9 @@ async function fetchMovieDetail(id: number): Promise<MovieDetailData> {
     similar: simUnique,
     trailerKey,
     collection,
+    keywords: keywordList,
+    externalIds: extIds,
+    tmdbReviews,
   }
 }
 
@@ -100,6 +113,9 @@ export function useMovieDetail(id: number) {
     similar: data?.similar ?? [],
     trailerKey: data?.trailerKey ?? null,
     collection: data?.collection ?? null,
+    keywords: data?.keywords ?? [],
+    externalIds: data?.externalIds ?? null,
+    tmdbReviews: data?.tmdbReviews ?? [],
     loading: isLoading,
     error: error ? '영화 정보를 불러오는 데 실패했습니다.' : null,
   }

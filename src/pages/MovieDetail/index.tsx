@@ -29,7 +29,7 @@ export default function MovieDetail() {
   const { showToast } = useToast()
   const movieId = Number(id)
 
-  const { movie, cast, directors, providers, providerRegion, recommendations, similar, trailerKey, collection, loading, error } = useMovieDetail(movieId)
+  const { movie, cast, directors, providers, providerRegion, recommendations, similar, trailerKey, collection, keywords, externalIds, tmdbReviews, loading, error } = useMovieDetail(movieId)
 
   const [inWatchlist, setInWatchlist] = useState(false)
   const [watchlistLoading, setWatchlistLoading] = useState(false)
@@ -393,7 +393,7 @@ export default function MovieDetail() {
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: keywords.length > 0 ? 16 : 0 }}>
               {movie.production_countries.length > 0 && (
                 <InfoMini label="제작국" value={movie.production_countries.map(c => c.name).join(', ')} />
               )}
@@ -401,6 +401,36 @@ export default function MovieDetail() {
                 <InfoMini label="언어" value={movie.spoken_languages.map(l => l.name).join(', ')} />
               )}
             </div>
+
+            {/* Keywords */}
+            {keywords.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                {keywords.map(kw => (
+                  <span key={kw.id} style={{ fontSize: 10, letterSpacing: '0.1em', color: 'var(--text-4)', border: '1px solid var(--border)', padding: '3px 10px', cursor: 'pointer', transition: 'all 0.15s' }}
+                    onClick={() => navigate(`/search?keyword=${kw.id}`)}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-2)'; e.currentTarget.style.borderColor = 'var(--border-2)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-4)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+                  >
+                    #{kw.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* External links */}
+            {externalIds?.imdb_id && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <a
+                  href={`https://www.imdb.com/title/${externalIds.imdb_id}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, letterSpacing: '0.12em', color: '#f5c518', border: '1px solid rgba(245,197,24,0.3)', padding: '5px 12px', textDecoration: 'none', transition: 'all 0.2s', fontWeight: 600 }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(245,197,24,0.08)'; e.currentTarget.style.borderColor = 'rgba(245,197,24,0.6)' }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = 'rgba(245,197,24,0.3)' }}
+                >
+                  IMDb ↗
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
@@ -440,6 +470,15 @@ export default function MovieDetail() {
             <SectionBlock title="스틸컷 & 포스터">
               <ImageGallery movieId={movieId} />
             </SectionBlock>
+            {tmdbReviews.length > 0 && (
+              <SectionBlock title="TMDB 관객 리뷰">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {tmdbReviews.map(review => (
+                    <TMDBReviewCard key={review.id} review={review} />
+                  ))}
+                </div>
+              </SectionBlock>
+            )}
             <SectionBlock title="리뷰 & 평점">
               <CommentSection movieId={movieId} />
             </SectionBlock>
@@ -571,6 +610,50 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ fontSize: 12, color: 'var(--text-4)' }}>{label}</span>
       <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{value}</span>
+    </div>
+  )
+}
+
+function TMDBReviewCard({ review }: { review: import('../../types').TMDBReview }) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = review.content.length > 300
+  const displayContent = isLong && !expanded ? review.content.slice(0, 300) + '…' : review.content
+  const avatarPath = review.author_details.avatar_path
+  const avatarUrl = avatarPath?.startsWith('/https') ? avatarPath.slice(1) : avatarPath ? `https://image.tmdb.org/t/p/w185${avatarPath}` : null
+  const date = new Date(review.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+
+  return (
+    <div style={{ padding: '16px 18px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--bg-surface)', flexShrink: 0 }}>
+          {avatarUrl
+            ? <img src={avatarUrl} alt={review.author} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-4)' }}>👤</div>
+          }
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{review.author}</span>
+            {review.author_details.rating && (
+              <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>
+                ★ {review.author_details.rating}/10
+              </span>
+            )}
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-4)' }}>{date}</span>
+        </div>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.75, margin: 0, whiteSpace: 'pre-wrap' }}>
+        {displayContent}
+      </p>
+      {isLong && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', padding: 0 }}
+        >
+          {expanded ? '접기' : '더 보기'}
+        </button>
+      )}
     </div>
   )
 }

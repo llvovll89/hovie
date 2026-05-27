@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getWatched, removeFromWatched, isFirebaseConfigured } from '../../lib/firebase'
 import { useAuthModal } from '../../contexts/AuthModalContext'
+import { useToast } from '../../contexts/ToastContext'
 import MovieCard from '../../components/ui/MovieCard'
 import SkeletonCard from '../../components/ui/SkeletonCard'
 import StarRating from '../../components/ui/StarRating'
@@ -22,6 +24,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 export default function Watched() {
   const { user, loading: authLoading } = useAuth()
   const { openSignIn } = useAuthModal()
+  const { showToast } = useToast()
   const [movies, setMovies] = useState<WatchedMovie[]>([])
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SortKey>('recent')
@@ -31,7 +34,7 @@ export default function Watched() {
     setLoading(true)
     getWatched(user.uid)
       .then(setMovies)
-      .catch(console.error)
+      .catch(() => showToast('시청 목록을 불러오지 못했습니다.', 'error'))
       .finally(() => setLoading(false))
   }, [user])
 
@@ -91,16 +94,23 @@ export default function Watched() {
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
           {user.photoURL && (
             <img src={user.photoURL} alt="" style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid rgba(0,153,255,0.4)' }} />
           )}
-          <div>
+          <div style={{ flex: 1 }}>
             <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 6px', textTransform: 'uppercase' }}>My Hovie</p>
             <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>
               {user.displayName ?? '내'} 시청 완료
             </h1>
           </div>
+          <Link to="/stats"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11, letterSpacing: '0.15em', color: 'var(--text-3)', textDecoration: 'none', border: '1px solid var(--border-2)', padding: '8px 16px', transition: 'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.color = A; e.currentTarget.style.borderColor = 'rgba(0,153,255,0.4)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border-2)' }}
+          >
+            📊 통계 보기
+          </Link>
         </div>
 
         {/* Stats */}

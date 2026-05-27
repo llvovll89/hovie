@@ -209,3 +209,28 @@ export interface PersonCredit {
   vote_average: number
   genre_ids: number[]
 }
+
+export interface Keyword {
+  id: number
+  name: string
+}
+
+export interface ExternalIds {
+  imdb_id: string | null
+  instagram_id: string | null
+  twitter_id: string | null
+}
+
+export interface TMDBReview {
+  id: string
+  author: string
+  author_details: {
+    name: string
+    username: string
+    avatar_path: string | null
+    rating: number | null
+  }
+  content: string
+  created_at: string
+  url: string
+}
