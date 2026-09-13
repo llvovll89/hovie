@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useMovieDetail } from '../../hooks/useMovieDetail'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,6 +11,8 @@ import MovieCard from '../../components/ui/MovieCard'
 import Spinner from '../../components/ui/Spinner'
 import SkeletonCard from '../../components/ui/SkeletonCard'
 import StarRating from '../../components/ui/StarRating'
+import TrailerModal from '../../components/ui/TrailerModal'
+import { MetaTag, InfoMini, SectionBlock, CastCard, HeartIcon, EyeIcon } from '../../components/ui/DetailShared'
 import StreamingInfo from './StreamingInfo'
 import CommentSection from './CommentSection'
 import ImageGallery from './ImageGallery'
@@ -61,18 +62,6 @@ export default function MovieDetail() {
       setWatchedRating(myRating)
     })
   }, [user, movieId])
-
-  useEffect(() => {
-    if (!trailerPlaying) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setTrailerPlaying(false) }
-    document.addEventListener('keydown', fn)
-    return () => {
-      document.body.style.overflow = prev
-      document.removeEventListener('keydown', fn)
-    }
-  }, [trailerPlaying])
 
   async function saveWatchedEntry() {
     if (!user || !movie) return
@@ -163,39 +152,8 @@ export default function MovieDetail() {
       {ogImage && <meta property="og:image" content={ogImage} />}
       <meta property="og:type" content="video.movie" />
 
-      {trailerPlaying && trailerKey && createPortal(
-        <div
-          className="modal-bg-enter"
-          role="dialog"
-          aria-modal="true"
-          aria-label="예고편"
-          style={{ position: 'fixed', inset: 0, zIndex: 9000, backgroundColor: 'rgba(0,0,0,0.97)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) setTrailerPlaying(false) }}
-        >
-          <div className="modal-content-enter" style={{ position: 'relative', width: '100%', maxWidth: 1100, padding: '0 20px' }}>
-            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
-              <iframe
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0`}
-                allow="autoplay; fullscreen; encrypted-media"
-                allowFullScreen
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-              />
-            </div>
-          </div>
-          <button
-            onClick={() => setTrailerPlaying(false)}
-            style={{ marginTop: 20, background: 'none', border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.7)', padding: '9px 24px', cursor: 'pointer', fontSize: 12, letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
-          >
-            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <line x1="18" y1="6" x2="6" y2="18" strokeLinecap="round" />
-              <line x1="6" y1="6" x2="18" y2="18" strokeLinecap="round" />
-            </svg>
-            닫기 (ESC)
-          </button>
-        </div>,
-        document.body
+      {trailerPlaying && trailerKey && (
+        <TrailerModal trailerKey={trailerKey} onClose={() => setTrailerPlaying(false)} />
       )}
 
       {/* Backdrop */}
@@ -215,6 +173,7 @@ export default function MovieDetail() {
             onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
             onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.55)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.7)' }}
             title="예고편 보기"
+            aria-label="예고편 보기"
           >
             <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style={{ marginLeft: 3 }}>
               <path d="M5 3l14 9-14 9V3z" />
@@ -225,6 +184,7 @@ export default function MovieDetail() {
         {/* Back button */}
         <button
           onClick={() => navigate(-1)}
+          aria-label="뒤로 가기"
           style={{ position: 'absolute', top: 18, left: 16, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', padding: '7px 14px', cursor: 'pointer', fontSize: 12, backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: 5 }}
         >
           <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -560,51 +520,6 @@ function MovieRow({ label, title, movies }: { label: string; title: string; movi
   )
 }
 
-function MetaTag({ label }: { label: string }) {
-  return (
-    <span style={{ fontSize: 12, color: 'var(--text-3)', border: '1px solid var(--border-2)', padding: '3px 10px' }}>
-      {label}
-    </span>
-  )
-}
-
-function InfoMini({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--text-4)', marginBottom: 3, textTransform: 'uppercase' }}>{label}</p>
-      <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>{value}</p>
-    </div>
-  )
-}
-
-function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 44 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 18px', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-        {title}
-      </h2>
-      {children}
-    </div>
-  )
-}
-
-function CastCard({ member }: { member: { id: number; name: string; character: string; profile_path: string | null } }) {
-  const img = member.profile_path ? `https://image.tmdb.org/t/p/w185${member.profile_path}` : null
-  return (
-    <Link to={`/person/${member.id}`} style={{ textDecoration: 'none', display: 'block', textAlign: 'center' }}>
-      <div
-        style={{ width: '100%', aspectRatio: '1/1', borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--bg-elevated)', marginBottom: 6, border: '1px solid var(--border)', transition: 'border-color 0.2s' }}
-        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
-        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-      >
-        {img ? <img src={img} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>}
-      </div>
-      <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-2)', margin: '0 0 2px', lineHeight: 1.3 }}>{member.name}</p>
-      <p style={{ fontSize: 10, color: 'var(--text-4)', margin: 0, lineHeight: 1.3 }}>{member.character}</p>
-    </Link>
-  )
-}
-
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
@@ -655,28 +570,6 @@ function TMDBReviewCard({ review }: { review: import('../../types').TMDBReview }
         </button>
       )}
     </div>
-  )
-}
-
-function EyeIcon({ filled }: { filled: boolean }) {
-  return filled ? (
-    <svg width="15" height="15" fill="none" stroke="var(--accent)" strokeWidth="1.8" viewBox="0 0 24 24">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" fill="var(--accent)" />
-    </svg>
-  ) : (
-    <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="15" height="15" fill={filled ? 'var(--accent)' : 'none'} stroke={filled ? 'var(--accent)' : 'currentColor'} strokeWidth="1.8" viewBox="0 0 24 24">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinejoin="round" />
-    </svg>
   )
 }
 

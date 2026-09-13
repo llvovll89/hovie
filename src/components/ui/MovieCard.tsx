@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { IMG } from '../../lib/tmdb'
 import type { Movie } from '../../types'
 
@@ -8,18 +8,17 @@ const A = 'var(--accent)'
 interface Props { movie: Movie; rank?: number }
 
 const MovieCard = memo(function MovieCard({ movie, rank }: Props) {
-  const navigate = useNavigate()
   const [hovered, setHovered] = useState(false)
   const posterUrl = IMG.poster(movie.poster_path, 'w342')
   const href = movie.mediaType === 'tv' ? `/tv/${movie.id}` : `/movie/${movie.id}`
   const year = movie.release_date?.split('-')[0]
 
   return (
-    <div
-      onClick={() => navigate(href)}
+    <Link
+      to={href}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ cursor: 'pointer', position: 'relative', alignSelf: 'start' }}
+      style={{ cursor: 'pointer', position: 'relative', alignSelf: 'start', display: 'block', textDecoration: 'none', color: 'inherit' }}
     >
       <div style={{
         position: 'relative', width: '100%', aspectRatio: '2/3',
@@ -147,7 +146,7 @@ const MovieCard = memo(function MovieCard({ movie, rank }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   )
 })
 

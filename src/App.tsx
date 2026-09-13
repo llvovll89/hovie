@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/layout/Layout'
 import Spinner from './components/ui/Spinner'
+import RouteError from './components/ui/RouteError'
 
 // ── Route-based code splitting ────────────────────────────────
 const Home       = lazy(() => import('./pages/Home'))
@@ -29,18 +31,19 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RouteError />,
     children: [
-      { index: true,            element: <Suspense fallback={<PageFallback />}><Home /></Suspense> },
-      { path: 'trending',       element: <Suspense fallback={<PageFallback />}><Trending /></Suspense> },
-      { path: 'search',         element: <Suspense fallback={<PageFallback />}><Search /></Suspense> },
-      { path: 'watchlist',      element: <Suspense fallback={<PageFallback />}><Watchlist /></Suspense> },
-      { path: 'movie/:id',      element: <Suspense fallback={<PageFallback />}><MovieDetail /></Suspense> },
-      { path: 'tv/:id',         element: <Suspense fallback={<PageFallback />}><TVDetail /></Suspense> },
-      { path: 'person/:id',     element: <Suspense fallback={<PageFallback />}><PersonDetail /></Suspense> },
-      { path: 'upcoming',       element: <Suspense fallback={<PageFallback />}><Upcoming /></Suspense> },
-      { path: 'compare',        element: <Suspense fallback={<PageFallback />}><Compare /></Suspense> },
-      { path: 'watched',        element: <Suspense fallback={<PageFallback />}><Watched /></Suspense> },
-      { path: 'stats',          element: <Suspense fallback={<PageFallback />}><Stats /></Suspense> },
+      { index: true,            element: <Suspense fallback={<PageFallback />}><Home /></Suspense>, errorElement: <RouteError /> },
+      { path: 'trending',       element: <Suspense fallback={<PageFallback />}><Trending /></Suspense>, errorElement: <RouteError /> },
+      { path: 'search',         element: <Suspense fallback={<PageFallback />}><Search /></Suspense>, errorElement: <RouteError /> },
+      { path: 'watchlist',      element: <Suspense fallback={<PageFallback />}><Watchlist /></Suspense>, errorElement: <RouteError /> },
+      { path: 'movie/:id',      element: <Suspense fallback={<PageFallback />}><MovieDetail /></Suspense>, errorElement: <RouteError /> },
+      { path: 'tv/:id',         element: <Suspense fallback={<PageFallback />}><TVDetail /></Suspense>, errorElement: <RouteError /> },
+      { path: 'person/:id',     element: <Suspense fallback={<PageFallback />}><PersonDetail /></Suspense>, errorElement: <RouteError /> },
+      { path: 'upcoming',       element: <Suspense fallback={<PageFallback />}><Upcoming /></Suspense>, errorElement: <RouteError /> },
+      { path: 'compare',        element: <Suspense fallback={<PageFallback />}><Compare /></Suspense>, errorElement: <RouteError /> },
+      { path: 'watched',        element: <Suspense fallback={<PageFallback />}><Watched /></Suspense>, errorElement: <RouteError /> },
+      { path: 'stats',          element: <Suspense fallback={<PageFallback />}><Stats /></Suspense>, errorElement: <RouteError /> },
     ],
   },
 ])
@@ -49,6 +52,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <RouterProvider router={router} />
+      <Analytics />
     </ThemeProvider>
   )
 }

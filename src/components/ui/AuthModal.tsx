@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { signInWithGoogle, signUpWithEmail, signInWithEmail, isFirebaseConfigured } from '../../lib/firebase'
+import Modal from './Modal'
 
 const A = 'var(--accent)'
 const AH = 'var(--accent-hover)'
@@ -130,16 +131,18 @@ export default function AuthModal({ mode, onClose, onSwitchMode }: Props) {
   }
 
   return (
-    <div
-      className="modal-bg-enter"
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    <Modal
+      onClose={onClose}
+      ariaLabel={mode === 'signup' ? '회원가입' : '로그인'}
+      style={{ zIndex: 1000, backgroundColor: 'transparent', padding: 20 }}
     >
+      {(requestClose, closing) => (<>
       <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)' }} />
 
-      <div className="modal-content-enter" style={{ position: 'relative', width: '100%', maxWidth: 440, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-2)', padding: '40px 36px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className={closing ? 'modal-content-exit' : 'modal-content-enter'} style={{ position: 'relative', width: '100%', maxWidth: 440, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-2)', padding: '40px 36px', maxHeight: '90vh', overflowY: 'auto' }}>
         {/* Close */}
-        <button onClick={onClose}
+        <button onClick={requestClose}
+          aria-label="닫기"
           style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 4 }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
@@ -293,6 +296,7 @@ export default function AuthModal({ mode, onClose, onSwitchMode }: Props) {
           </button>
         </p>
       </div>
-    </div>
+      </>)}
+    </Modal>
   )
 }

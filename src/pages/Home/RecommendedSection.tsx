@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getWatched, isFirebaseConfigured } from '../../lib/firebase'
 import { tmdb } from '../../lib/tmdb'
-import { useToast } from '../../contexts/ToastContext'
 import SkeletonCard from '../../components/ui/SkeletonCard'
 import MovieCard from '../../components/ui/MovieCard'
 import type { WatchedMovie, Movie } from '../../types'
@@ -25,40 +24,51 @@ function buildTopGenres(movies: WatchedMovie[]): number[] {
     .map(([id]) => Number(id))
 }
 
+async function fetchRecommendations(uid: string): Promise<Movie[]> {
+  const watched = await getWatched(uid)
+  const topGenres = buildTopGenres(watched)
+  if (topGenres.length === 0) return []
+  const watchedIds = new Set(watched.map(m => m.id))
+  const data = await tmdb.discover({
+    with_genres: topGenres.join(','),
+    sort_by: 'vote_average.desc',
+    'vote_count.gte': '200',
+    page: '1',
+  })
+  return (data.results as Movie[])
+    .filter(m => !watchedIds.has(m.id))
+    .slice(0, 8)
+}
+
 export default function RecommendedSection() {
   const { user } = useAuth()
-  const { showToast } = useToast()
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [loading, setLoading] = useState(false)
-  const [ready, setReady] = useState(false)
+  const enabled = !!user && isFirebaseConfigured
+  const { data: movies, isLoading, isError } = useQuery({
+    queryKey: ['recommended', user?.uid],
+    queryFn: () => fetchRecommendations(user!.uid),
+    enabled,
+  })
 
-  useEffect(() => {
-    if (!user || !isFirebaseConfigured) return
-    setLoading(true)
-    getWatched(user.uid)
-      .then(async watched => {
-        const topGenres = buildTopGenres(watched)
-        if (topGenres.length === 0) { setReady(true); return }
-        const watchedIds = new Set(watched.map(m => m.id))
-        const data = await tmdb.discover({
-          with_genres: topGenres.join(','),
-          sort_by: 'vote_average.desc',
-          'vote_count.gte': '200',
-          page: '1',
-        })
-        const results = (data.results as Movie[])
-          .filter(m => !watchedIds.has(m.id))
-          .slice(0, 8)
-        setMovies(results)
-        setReady(true)
-      })
-      .catch(() => { setReady(true); showToast('추천 영화를 불러오지 못했습니다.', 'error') })
-      .finally(() => setLoading(false))
-  }, [user])
+  if (!enabled) return null
 
-  if (!user || !isFirebaseConfigured) return null
-  if (!ready && !loading) return null
-  if (ready && movies.length === 0) return null
+  if (!isLoading && !isError && (movies?.length ?? 0) === 0) {
+    return (
+      <section style={{ padding: '80px 20px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', textAlign: 'center' }}>
+          <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 10px', textTransform: 'uppercase' }}>Taste Profile</p>
+          <h2 style={{ fontSize: 'clamp(20px, 3.5vw, 28px)', fontWeight: 700, margin: '0 0 10px' }}>내 취향 추천</h2>
+          <p style={{ color: 'var(--text-3)', fontSize: 14, margin: '0 0 20px' }}>
+            시청 기록에 4점 이상 별점을 남기면 취향에 맞는 영화를 추천해 드려요.
+          </p>
+          <Link to="/watched" style={{ fontSize: 12, letterSpacing: '0.12em', color: A, textDecoration: 'none' }}>
+            시청 기록 남기러 가기 →
+          </Link>
+        </div>
+      </section>
+    )
+  }
+
+  if (isError) return null
 
   return (
     <section style={{ padding: '80px 20px', borderTop: '1px solid var(--border)' }}>
@@ -77,11 +87,11 @@ export default function RecommendedSection() {
             </Link>
           </div>
         </div>
-        {loading ? (
+        {isLoading ? (
           <div className="movie-grid-4"><SkeletonCard count={8} /></div>
         ) : (
           <div className="movie-grid-4">
-            {movies.map(m => <MovieCard key={m.id} movie={m} />)}
+            {(movies ?? []).map(m => <MovieCard key={m.id} movie={m} />)}
           </div>
         )}
       </div>

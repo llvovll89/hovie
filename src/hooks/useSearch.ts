@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { tmdb, normalizeTVShow } from '../lib/tmdb'
 import type { Movie, SearchFilters, TVShow } from '../types'
 
@@ -10,6 +10,13 @@ interface SearchResult {
   error: string | null
   loadMore: () => void
   hasMore: boolean
+}
+
+interface SearchPage {
+  movies: Movie[]
+  totalResults: number
+  totalPages: number
+  page: number
 }
 
 function buildDiscoverParams(filters: SearchFilters, page: number): Record<string, string> {
@@ -36,69 +43,42 @@ function buildTVDiscoverParams(filters: SearchFilters, page: number): Record<str
   return params
 }
 
-export function useSearch(query: string, filters: SearchFilters, mediaType: 'movie' | 'tv' = 'movie'): SearchResult {
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [page, setPage] = useState(1)
-  const [totalResults, setTotalResults] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+async function fetchSearchPage(query: string, filters: SearchFilters, mediaType: 'movie' | 'tv', page: number): Promise<SearchPage> {
+  const data = query.trim()
+    ? mediaType === 'tv'
+      ? await tmdb.tvSearch(query.trim(), page)
+      : await tmdb.search(query.trim(), page)
+    : mediaType === 'tv'
+      ? await tmdb.tvDiscover(buildTVDiscoverParams(filters, page))
+      : await tmdb.discover(buildDiscoverParams(filters, page))
 
-  // Stable key for detecting query/filter changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const filtersStr = JSON.stringify({ query, mediaType, ...filters })
+  const movies = mediaType === 'tv'
+    ? (data.results as TVShow[]).map(normalizeTVShow)
+    : data.results as Movie[]
 
-  // Reset page and movies when query or filters change
-  useEffect(() => {
-    setPage(1)
-    setMovies([])
-    setTotalPages(0)
-    setTotalResults(0)
-    setError(null)
-  }, [filtersStr]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchMovies = useCallback(async (pageToFetch: number) => {
-    let cancelled = false
-    const abort = new AbortController()
-
-    setLoading(true)
-
-    try {
-      const data = query.trim()
-        ? mediaType === 'tv'
-          ? await tmdb.tvSearch(query.trim(), pageToFetch)
-          : await tmdb.search(query.trim(), pageToFetch)
-        : mediaType === 'tv'
-          ? await tmdb.tvDiscover(buildTVDiscoverParams(filters, pageToFetch))
-          : await tmdb.discover(buildDiscoverParams(filters, pageToFetch))
-
-      if (cancelled) return
-      const capped = Math.min(data.total_pages, 500)
-      const normalized = mediaType === 'tv'
-        ? (data.results as TVShow[]).map(normalizeTVShow)
-        : data.results as Movie[]
-      setTotalResults(data.total_results)
-      setTotalPages(capped)
-      setMovies(prev => pageToFetch === 1 ? normalized : [...prev, ...normalized])
-    } catch (err) {
-      if (!cancelled && err instanceof Error && err.name !== 'AbortError') {
-        setError('영화를 불러오는 데 실패했습니다.')
-      }
-    } finally {
-      if (!cancelled) setLoading(false)
-    }
-
-    return () => { cancelled = true; abort.abort() }
-  }, [query, filters, mediaType]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const cleanup = fetchMovies(page)
-    return () => { cleanup?.then(fn => fn?.()) }
-  }, [fetchMovies, page]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function loadMore() {
-    if (!loading && page < totalPages) setPage(p => p + 1)
+  return {
+    movies,
+    totalResults: data.total_results,
+    totalPages: Math.min(data.total_pages, 500),
+    page,
   }
+}
 
-  return { movies, totalResults, totalPages, loading, error, loadMore, hasMore: page < totalPages }
+export function useSearch(query: string, filters: SearchFilters, mediaType: 'movie' | 'tv' = 'movie'): SearchResult {
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage, error } = useInfiniteQuery({
+    queryKey: ['search', mediaType, query, filters],
+    queryFn: ({ pageParam }) => fetchSearchPage(query, filters, mediaType, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: last => (last.page < last.totalPages ? last.page + 1 : undefined),
+  })
+
+  return {
+    movies: data?.pages.flatMap(p => p.movies) ?? [],
+    totalResults: data?.pages[0]?.totalResults ?? 0,
+    totalPages: data?.pages[0]?.totalPages ?? 0,
+    loading: isLoading || isFetchingNextPage,
+    error: error ? '영화를 불러오는 데 실패했습니다.' : null,
+    loadMore: () => { if (hasNextPage) fetchNextPage() },
+    hasMore: !!hasNextPage,
+  }
 }

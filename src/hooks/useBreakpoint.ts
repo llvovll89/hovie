@@ -1,19 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
+
+const QUERIES = {
+  isMobile: '(max-width: 767px)',
+  isTablet: '(max-width: 1023px)',
+} as const
+
+function subscribe(query: string, onChange: () => void) {
+  const mql = window.matchMedia(query)
+  mql.addEventListener('change', onChange)
+  return () => mql.removeEventListener('change', onChange)
+}
+
+function useMediaQuery(query: string) {
+  return useSyncExternalStore(
+    onChange => subscribe(query, onChange),
+    () => window.matchMedia(query).matches,
+    () => false,
+  )
+}
 
 export function useBreakpoint() {
-  const [width, setWidth] = useState(
-    typeof window !== 'undefined' ? window.innerWidth : 1280
-  )
-
-  useEffect(() => {
-    const handler = () => setWidth(window.innerWidth)
-    window.addEventListener('resize', handler, { passive: true })
-    return () => window.removeEventListener('resize', handler)
-  }, [])
-
-  return {
-    isMobile: width < 768,
-    isTablet: width < 1024,
-    width,
-  }
+  const isMobile = useMediaQuery(QUERIES.isMobile)
+  const isTablet = useMediaQuery(QUERIES.isTablet)
+  return { isMobile, isTablet }
 }

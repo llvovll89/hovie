@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { tmdb } from '../../lib/tmdb'
 import Spinner from '../../components/ui/Spinner'
+import Modal from '../../components/ui/Modal'
 import type { MovieImage } from '../../types'
 
 const BASE_IMG = 'https://image.tmdb.org/t/p'
@@ -40,13 +41,12 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
   useEffect(() => {
     if (lightboxIndex === null) return
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeLightbox()
-      else if (e.key === 'ArrowLeft') prevImage()
+      if (e.key === 'ArrowLeft') prevImage()
       else if (e.key === 'ArrowRight') nextImage()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, closeLightbox, prevImage, nextImage])
+  }, [lightboxIndex, prevImage, nextImage])
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}><Spinner size={28} /></div>
@@ -133,10 +133,8 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
 
       {/* Lightbox */}
       {currentImg && lightboxIndex !== null && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 9500, backgroundColor: 'rgba(0,0,0,0.96)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) closeLightbox() }}
-        >
+        <Modal onClose={closeLightbox} ariaLabel="이미지 보기" style={{ zIndex: 9500, backgroundColor: 'rgba(0,0,0,0.96)' }}>
+          {(requestClose) => (<>
           {/* Image */}
           <div style={{ position: 'relative', maxWidth: tab === 'backdrops' ? '90vw' : '50vw', maxHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img
@@ -148,6 +146,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
             {/* Prev */}
             <button
               onClick={prevImage}
+              aria-label="이전 이미지"
               style={{ position: 'absolute', left: -52, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 40, height: 40, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s', borderRadius: 0 }}
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.18)')}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)')}
@@ -160,6 +159,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
             {/* Next */}
             <button
               onClick={nextImage}
+              aria-label="다음 이미지"
               style={{ position: 'absolute', right: -52, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', width: 40, height: 40, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s', borderRadius: 0 }}
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.18)')}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)')}
@@ -176,7 +176,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
               {lightboxIndex + 1} / {images.length}
             </span>
             <button
-              onClick={closeLightbox}
+              onClick={requestClose}
               style={{ background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', padding: '7px 20px', cursor: 'pointer', fontSize: 11, letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.2s', fontFamily: 'Inter, sans-serif' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
@@ -191,7 +191,8 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
               {currentImg.width} × {currentImg.height}
             </span>
           </div>
-        </div>
+          </>)}
+        </Modal>
       )}
     </>
   )

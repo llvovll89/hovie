@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /watchlist
+Disallow: /watched
+Disallow: /stats
+
+Sitemap: https://hovie.vercel.app/sitemap.xml

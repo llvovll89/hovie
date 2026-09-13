@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { tmdb, IMG } from '../../lib/tmdb'
 import MovieCard from '../../components/ui/MovieCard'
 import Spinner from '../../components/ui/Spinner'
-import { useToast } from '../../contexts/ToastContext'
 import type { Movie } from '../../types'
 
 const A = 'var(--accent)'
@@ -26,27 +25,22 @@ function formatDate(dateStr: string): string {
 }
 
 export default function Upcoming() {
-  const { showToast } = useToast()
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalResults, setTotalResults] = useState(0)
+  const { data, isLoading, isFetchingNextPage, isError, fetchNextPage, hasNextPage } = useInfiniteQuery({
+    queryKey: ['upcoming'],
+    queryFn: ({ pageParam }) => tmdb.upcoming(pageParam).then(d => ({
+      movies: (d.results as Movie[]).filter(m => m.release_date),
+      totalPages: Math.min(d.total_pages, 8),
+      totalResults: d.total_results,
+      page: pageParam,
+    })),
+    initialPageParam: 1,
+    getNextPageParam: last => (last.page < last.totalPages ? last.page + 1 : undefined),
+  })
 
-  useEffect(() => {
-    if (page === 1) setLoading(true)
-    else setLoadingMore(true)
-    tmdb.upcoming(page)
-      .then(d => {
-        const results = (d.results as Movie[]).filter(m => m.release_date)
-        setMovies(prev => page === 1 ? results : [...prev, ...results])
-        setTotalPages(Math.min(d.total_pages, 8))
-        setTotalResults(d.total_results)
-      })
-      .catch(() => showToast('개봉 예정작을 불러오지 못했습니다.', 'error'))
-      .finally(() => { setLoading(false); setLoadingMore(false) })
-  }, [page])
+  const movies = data?.pages.flatMap(p => p.movies) ?? []
+  const totalResults = data?.pages[0]?.totalResults ?? 0
+  const loading = isLoading
+  const loadingMore = isFetchingNextPage
 
   const hero = movies[0]
   const rest = movies.slice(1)
@@ -62,7 +56,14 @@ export default function Upcoming() {
         <UpcomingHero movie={hero} />
       ) : null}
 
-      {!loading && (
+      {!loading && isError && (
+        <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+          <p style={{ fontSize: 40, marginBottom: 14 }}>⚠️</p>
+          <p style={{ color: 'var(--text-3)', fontSize: 15 }}>개봉 예정작을 불러오지 못했습니다.</p>
+        </div>
+      )}
+
+      {!loading && !isError && (
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '64px 20px 80px' }}>
 
           {/* Section header */}
@@ -97,10 +98,10 @@ export default function Upcoming() {
           )}
 
           {/* Load more */}
-          {page < totalPages && (
+          {hasNextPage && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 56 }}>
               <button
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => fetchNextPage()}
                 disabled={loadingMore}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 40px', border: `1px solid ${loadingMore ? 'var(--border)' : 'var(--border-2)'}`, backgroundColor: 'transparent', color: loadingMore ? 'var(--text-4)' : 'var(--text-2)', fontSize: 12, letterSpacing: '0.15em', cursor: loadingMore ? 'wait' : 'pointer', transition: 'all 0.2s', fontFamily: 'Inter, sans-serif' }}
                 onMouseEnter={e => { if (!loadingMore) { e.currentTarget.style.borderColor = A; e.currentTarget.style.color = A } }}
@@ -112,7 +113,7 @@ export default function Upcoming() {
             </div>
           )}
 
-          {page >= totalPages && movies.length > 0 && (
+          {!hasNextPage && movies.length > 0 && (
             <p style={{ textAlign: 'center', color: 'var(--text-5)', fontSize: 11, letterSpacing: '0.15em', marginTop: 56 }}>
               — 모든 개봉 예정작을 불러왔습니다 —
             </p>
