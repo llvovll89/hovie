@@ -13,6 +13,7 @@ import { useAuthModal } from '../../contexts/AuthModalContext'
 import { useTheme } from '../../hooks/useTheme'
 import { useToast } from '../../hooks/useToast'
 import SearchDropdown from '../ui/SearchDropdown'
+import Brand from '../ui/Brand'
 const ITEMS = [['/trending', '트렌딩'], ['/upcoming', '개봉 예정'], ['/compare', '작품 비교'], ['/search', '탐색'], ['/watchlist', '내 목록']]
 export default function Navbar() {
   const { pathname, search } = useLocation()
@@ -26,7 +27,7 @@ function Navigation({ pathname }: { pathname: string }) {
   const { theme, toggleTheme } = useTheme()
   const { showToast } = useToast()
   return <header className="site-header"><nav className="navbar" aria-label="주 메뉴">
-    <Link to="/" className="wordmark" aria-label="HOVIE 홈">HOV<span>IE</span></Link>
+    <Link to="/" className="wordmark" aria-label="HOVIE 홈"><Brand /></Link>
     <div className="desktop-nav">{ITEMS.map(([to, label]) => <Link key={to} to={to} aria-current={pathname === to ? 'page' : undefined}>{label}</Link>)}</div>
     <div className="nav-actions">
       <button className="icon-button" onClick={toggleTheme} aria-label={theme === 'dark' ? '라이트 모드' : '다크 모드'}>{theme === 'dark' ? <Sun size={21} /> : <Moon size={21} />}</button>
