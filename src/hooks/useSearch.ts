@@ -1,84 +1,26 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { tmdb, normalizeTVShow } from '../lib/tmdb'
-import type { Movie, SearchFilters, TVShow } from '../types'
-
-interface SearchResult {
-  movies: Movie[]
-  totalResults: number
-  totalPages: number
-  loading: boolean
-  error: string | null
-  loadMore: () => void
-  hasMore: boolean
-}
-
-interface SearchPage {
-  movies: Movie[]
-  totalResults: number
-  totalPages: number
-  page: number
-}
-
-function buildDiscoverParams(filters: SearchFilters, page: number): Record<string, string> {
-  const params: Record<string, string> = { page: String(page), sort_by: filters.sortBy }
-  if (filters.genre) params['with_genres'] = String(filters.genre)
-  if (filters.year) params['primary_release_year'] = filters.year
-  if (filters.minRating > 0) params['vote_average.gte'] = String(filters.minRating)
-  if (filters.language) params['with_original_language'] = filters.language
-  if (filters.runtime === '~90') params['with_runtime.lte'] = '90'
-  else if (filters.runtime === '90~120') { params['with_runtime.gte'] = '90'; params['with_runtime.lte'] = '120' }
-  else if (filters.runtime === '120~150') { params['with_runtime.gte'] = '120'; params['with_runtime.lte'] = '150' }
-  else if (filters.runtime === '150~') params['with_runtime.gte'] = '150'
-  params['vote_count.gte'] = '50'
-  return params
-}
-
-function buildTVDiscoverParams(filters: SearchFilters, page: number): Record<string, string> {
-  const params: Record<string, string> = { page: String(page), sort_by: filters.sortBy }
-  if (filters.genre) params['with_genres'] = String(filters.genre)
-  if (filters.year) params['first_air_date_year'] = filters.year
-  if (filters.minRating > 0) params['vote_average.gte'] = String(filters.minRating)
-  if (filters.language) params['with_original_language'] = filters.language
-  params['vote_count.gte'] = '50'
-  return params
-}
-
-async function fetchSearchPage(query: string, filters: SearchFilters, mediaType: 'movie' | 'tv', page: number): Promise<SearchPage> {
-  const data = query.trim()
-    ? mediaType === 'tv'
-      ? await tmdb.tvSearch(query.trim(), page)
-      : await tmdb.search(query.trim(), page)
-    : mediaType === 'tv'
-      ? await tmdb.tvDiscover(buildTVDiscoverParams(filters, page))
-      : await tmdb.discover(buildDiscoverParams(filters, page))
-
-  const movies = mediaType === 'tv'
-    ? (data.results as TVShow[]).map(normalizeTVShow)
-    : data.results as Movie[]
-
-  return {
-    movies,
-    totalResults: data.total_results,
-    totalPages: Math.min(data.total_pages, 500),
-    page,
-  }
-}
-
-export function useSearch(query: string, filters: SearchFilters, mediaType: 'movie' | 'tv' = 'movie'): SearchResult {
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage, error } = useInfiniteQuery({
-    queryKey: ['search', mediaType, query, filters],
-    queryFn: ({ pageParam }) => fetchSearchPage(query, filters, mediaType, pageParam),
+import { tmdb, normalizeTVShow, type MultiResult } from '../lib/tmdb'
+import { discoverParams } from '../lib/search'
+import type { SearchFilters, Movie } from '../types'
+export function useSearch(query: string, filters: SearchFilters, mediaType: 'movie' | 'tv' | 'all' = 'movie') {
+  const result = useInfiniteQuery({
+    queryKey: ['search', mediaType, query, query.trim() ? null : filters],
+    queryFn: async ({ pageParam, signal }) => {
+      if (query.trim() && mediaType === 'all') {
+        const data = await tmdb.multiSearch(query.trim(), pageParam, signal)
+        return { ...data, movies: [] as Movie[], people: data.results.filter((r): r is Extract<MultiResult, { media_type: 'person' }> => r.media_type === 'person'), combined: data.results.filter(r => r.media_type !== 'person').map(r => r.media_type === 'tv' ? normalizeTVShow(r) : r as Movie) }
+      }
+      const type = mediaType === 'tv' ? 'tv' : 'movie'
+      const data = query.trim()
+        ? type === 'tv' ? await tmdb.tvSearch(query.trim(), pageParam, signal) : await tmdb.search(query.trim(), pageParam, signal)
+        : type === 'tv' ? await tmdb.tvDiscover(discoverParams(filters, type, pageParam), signal) : await tmdb.discover(discoverParams(filters, type, pageParam), signal)
+      const movies = type === 'tv' ? data.results.map(r => normalizeTVShow(r as Parameters<typeof normalizeTVShow>[0])) : data.results as Movie[]
+      return { ...data, movies, combined: movies, people: [] as Extract<MultiResult, { media_type: 'person' }>[] }
+    },
     initialPageParam: 1,
-    getNextPageParam: last => (last.page < last.totalPages ? last.page + 1 : undefined),
+    getNextPageParam: last => last.page < Math.min(last.total_pages, 500) ? last.page + 1 : undefined,
   })
-
-  return {
-    movies: data?.pages.flatMap(p => p.movies) ?? [],
-    totalResults: data?.pages[0]?.totalResults ?? 0,
-    totalPages: data?.pages[0]?.totalPages ?? 0,
-    loading: isLoading || isFetchingNextPage,
-    error: error ? '영화를 불러오는 데 실패했습니다.' : null,
-    loadMore: () => { if (hasNextPage) fetchNextPage() },
-    hasMore: !!hasNextPage,
-  }
+  const movies = result.data?.pages.flatMap(p => p.combined) ?? []
+  const people = result.data?.pages.flatMap(p => p.people) ?? []
+  return { movies: [...new Map(movies.map(m => [(m.mediaType ?? 'movie') + '_' + m.id, m])).values()], people: [...new Map(people.map(p => [p.id, p])).values()], totalResults: result.data?.pages[0]?.total_results ?? 0, loading: result.isLoading, loadingMore: result.isFetchingNextPage, error: result.error ? '검색 결과를 불러오지 못했습니다.' : null, loadMore: () => { if (result.hasNextPage && !result.isFetchingNextPage) void result.fetchNextPage() }, hasMore: !!result.hasNextPage, retry: result.refetch }
 }

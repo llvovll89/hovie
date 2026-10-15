@@ -9,6 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       manifest: false, // public/manifest.json is hand-maintained and already linked in index.html
       includeAssets: ['icon-192.png', 'icon-512.png'],
       workbox: {

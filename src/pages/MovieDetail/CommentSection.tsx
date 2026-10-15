@@ -80,7 +80,7 @@ export default function CommentSection({ movieId, mediaType = 'movie' }: Props) 
     <div>
       {avgRating && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, padding: '16px 20px', border: '1px solid rgba(0,153,255,0.2)', backgroundColor: 'rgba(0,153,255,0.04)' }}>
-          <span style={{ color: A, fontSize: 28, fontWeight: 700, fontFamily: 'Playfair Display, serif' }}>{avgRating}</span>
+          <span style={{ color: A, fontSize: 28, fontWeight: 700, fontFamily: 'Pretendard Variable, sans-serif' }}>{avgRating}</span>
           <div>
             <StarRating value={Math.round(Number(avgRating))} readOnly size={16} />
             <p style={{ color: 'var(--text-4)', fontSize: 11, margin: '4px 0 0' }}>{comments.length}개의 리뷰</p>
@@ -105,7 +105,7 @@ export default function CommentSection({ movieId, mediaType = 'movie' }: Props) 
             onChange={e => setContent(e.target.value)}
             placeholder="이 영화에 대한 감상을 남겨주세요..."
             rows={4}
-            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-2)', color: 'var(--text)', padding: '12px 16px', fontSize: 14, lineHeight: 1.65, resize: 'vertical', outline: 'none', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
+            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-2)', color: 'var(--text)', padding: '12px 16px', fontSize: 14, lineHeight: 1.65, resize: 'vertical', outline: 'none', fontFamily: 'Pretendard Variable, sans-serif', boxSizing: 'border-box' }}
           />
 
           {error && <p style={{ color: '#ff6b6b', fontSize: 12, margin: '8px 0 0' }}>{error}</p>}

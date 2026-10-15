@@ -15,11 +15,15 @@ export default function Modal({ onClose, ariaLabel, children, style }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
   const [closing, setClosing] = useState(false)
-
   const requestClose = useCallback(() => {
     setClosing(true)
-    setTimeout(onClose, EXIT_MS)
-  }, [onClose])
+  }, [])
+
+  useEffect(() => {
+    if (!closing) return
+    const timer = setTimeout(onClose, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : EXIT_MS)
+    return () => clearTimeout(timer)
+  }, [closing, onClose])
 
   // Mount-only: scroll lock, initial focus, Tab-trap. Doesn't depend on onClose
   // so it never re-subscribes and steals focus back while the modal is open.

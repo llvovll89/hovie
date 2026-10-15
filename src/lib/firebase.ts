@@ -1,264 +1,34 @@
-import { initializeApp, getApps, getApp } from 'firebase/app'
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile,
-  type User,
-} from 'firebase/auth'
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  updateDoc,
-  doc,
-  query,
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-} from 'firebase/firestore'
-import type { Comment, Movie, WatchedMovie } from '../types'
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-}
-
-export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean)
-
-const app = isFirebaseConfigured
-  ? (getApps().length ? getApp() : initializeApp(firebaseConfig))
-  : null
-export const auth = app ? getAuth(app) : null
-export const db = app ? getFirestore(app) : null
-
-const googleProvider = new GoogleAuthProvider()
-
-/* ── Auth ──────────────────────────────── */
-
-export async function signInWithGoogle() {
-  if (!auth) throw new Error('Firebase not configured')
-  return signInWithPopup(auth, googleProvider)
-}
-
-export async function signOutUser() {
-  if (!auth) throw new Error('Firebase not configured')
-  return signOut(auth)
-}
-
-export async function signUpWithEmail(email: string, password: string, displayName: string) {
-  if (!auth) throw new Error('Firebase not configured')
-  const cred = await createUserWithEmailAndPassword(auth, email, password)
-  await updateProfile(cred.user, { displayName })
-  return cred
-}
-
-export async function signInWithEmail(email: string, password: string) {
-  if (!auth) throw new Error('Firebase not configured')
-  return signInWithEmailAndPassword(auth, email, password)
-}
-
+import type { User } from 'firebase/auth'
+type SDK = typeof import('./firebase-sdk')
+export const isFirebaseConfigured = ['VITE_FIREBASE_API_KEY','VITE_FIREBASE_AUTH_DOMAIN','VITE_FIREBASE_PROJECT_ID','VITE_FIREBASE_STORAGE_BUCKET','VITE_FIREBASE_MESSAGING_SENDER_ID','VITE_FIREBASE_APP_ID'].every(key => !!import.meta.env[key])
+let pending: Promise<SDK> | undefined
+const load = () => pending ??= import('./firebase-sdk').catch(error => { pending = undefined; throw error })
 export function onAuthChange(callback: (user: User | null) => void) {
-  if (!auth) { callback(null); return () => {} }
-  return onAuthStateChanged(auth, callback)
+  if (!isFirebaseConfigured) { callback(null); return () => {} }
+  let active = true
+  let unsubscribe: (() => void) | undefined
+  void load().then(sdk => { if (active) unsubscribe = sdk.onAuthChange(callback) }).catch(() => { if (active) callback(null) })
+  return () => { active = false; unsubscribe?.() }
 }
-
-/* ── Comments ──────────────────────────── */
-
-export async function addComment(
-  movieId: number, user: User, content: string, rating: number
-): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await addDoc(collection(db, 'movies', String(movieId), 'comments'), {
-    userId: user.uid,
-    userEmail: user.email,
-    userDisplayName: user.displayName ?? '익명',
-    userPhotoURL: user.photoURL,
-    content,
-    rating,
-    createdAt: serverTimestamp(),
-  })
-}
-
-export async function getComments(movieId: number): Promise<Comment[]> {
-  if (!db) return []
-  const q = query(
-    collection(db, 'movies', String(movieId), 'comments'),
-    orderBy('createdAt', 'desc')
-  )
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(d => {
-    const data = d.data()
-    return {
-      id: d.id,
-      userId: data.userId,
-      userEmail: data.userEmail,
-      userDisplayName: data.userDisplayName,
-      userPhotoURL: data.userPhotoURL,
-      movieId,
-      content: data.content,
-      rating: data.rating,
-      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
-    } satisfies Comment
-  })
-}
-
-/* ── Watchlist ─────────────────────────── */
-
-export async function addToWatchlist(userId: string, movie: Movie): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await setDoc(doc(db, 'users', userId, 'watchlist', String(movie.id)), {
-    id: movie.id,
-    title: movie.title,
-    original_title: movie.original_title,
-    poster_path: movie.poster_path,
-    backdrop_path: movie.backdrop_path,
-    vote_average: movie.vote_average,
-    vote_count: movie.vote_count,
-    release_date: movie.release_date,
-    overview: movie.overview,
-    genre_ids: movie.genre_ids ?? [],
-    popularity: movie.popularity ?? 0,
-    adult: movie.adult ?? false,
-    addedAt: serverTimestamp(),
-  })
-}
-
-export async function removeFromWatchlist(userId: string, movieId: number): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await deleteDoc(doc(db, 'users', userId, 'watchlist', String(movieId)))
-}
-
-export async function getWatchlist(userId: string): Promise<Movie[]> {
-  if (!db) return []
-  const q = query(
-    collection(db, 'users', userId, 'watchlist'),
-    orderBy('addedAt', 'desc')
-  )
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(d => d.data() as Movie)
-}
-
-export async function checkInWatchlist(userId: string, movieId: number): Promise<boolean> {
-  if (!db) return false
-  const snap = await getDoc(doc(db, 'users', userId, 'watchlist', String(movieId)))
-  return snap.exists()
-}
-
-/* ── Watched ───────────────────────────────────────────────── */
-
-export async function addToWatched(userId: string, movie: Movie, myRating = 0): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await setDoc(doc(db, 'users', userId, 'watched', String(movie.id)), {
-    id: movie.id,
-    title: movie.title,
-    original_title: movie.original_title,
-    poster_path: movie.poster_path,
-    backdrop_path: movie.backdrop_path,
-    vote_average: movie.vote_average,
-    vote_count: movie.vote_count,
-    release_date: movie.release_date,
-    overview: movie.overview,
-    genre_ids: movie.genre_ids ?? [],
-    popularity: movie.popularity ?? 0,
-    adult: movie.adult ?? false,
-    myRating,
-    watchedAt: serverTimestamp(),
-  })
-}
-
-export async function removeFromWatched(userId: string, movieId: number): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await deleteDoc(doc(db, 'users', userId, 'watched', String(movieId)))
-}
-
-export async function getWatched(userId: string): Promise<WatchedMovie[]> {
-  if (!db) return []
-  const q = query(
-    collection(db, 'users', userId, 'watched'),
-    orderBy('watchedAt', 'desc')
-  )
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(d => {
-    const data = d.data()
-    return {
-      ...data,
-      myRating: data.myRating ?? 0,
-      watchedAt: data.watchedAt instanceof Timestamp ? data.watchedAt.toDate() : new Date(),
-    } as WatchedMovie
-  })
-}
-
-export async function checkInWatched(userId: string, movieId: number): Promise<{ inWatched: boolean; myRating: number }> {
-  if (!db) return { inWatched: false, myRating: 0 }
-  const snap = await getDoc(doc(db, 'users', userId, 'watched', String(movieId)))
-  if (!snap.exists()) return { inWatched: false, myRating: 0 }
-  return { inWatched: true, myRating: snap.data().myRating ?? 0 }
-}
-
-export async function updateWatchedRating(userId: string, movieId: number, myRating: number): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await updateDoc(doc(db, 'users', userId, 'watched', String(movieId)), { myRating })
-}
-
-export async function deleteComment(movieId: number, commentId: string): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await deleteDoc(doc(db, 'movies', String(movieId), 'comments', commentId))
-}
-
-/* ── TV Comments ───────────────────────────────────────────── */
-
-export async function addTVComment(
-  tvId: number, user: User, content: string, rating: number
-): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await addDoc(collection(db, 'tv', String(tvId), 'comments'), {
-    userId: user.uid,
-    userEmail: user.email,
-    userDisplayName: user.displayName ?? '익명',
-    userPhotoURL: user.photoURL,
-    content,
-    rating,
-    createdAt: serverTimestamp(),
-  })
-}
-
-export async function deleteTVComment(tvId: number, commentId: string): Promise<void> {
-  if (!db) throw new Error('Firebase not configured')
-  await deleteDoc(doc(db, 'tv', String(tvId), 'comments', commentId))
-}
-
-export async function getTVComments(tvId: number): Promise<Comment[]> {
-  if (!db) return []
-  const q = query(
-    collection(db, 'tv', String(tvId), 'comments'),
-    orderBy('createdAt', 'desc')
-  )
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(d => {
-    const data = d.data()
-    return {
-      id: d.id,
-      userId: data.userId,
-      userEmail: data.userEmail,
-      userDisplayName: data.userDisplayName,
-      userPhotoURL: data.userPhotoURL,
-      movieId: tvId,
-      content: data.content,
-      rating: data.rating,
-      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
-    } satisfies Comment
-  })
-}
+export const signInWithGoogle: SDK['signInWithGoogle'] = (...args) => load().then(sdk => sdk.signInWithGoogle(...args))
+export const signOutUser: SDK['signOutUser'] = (...args) => load().then(sdk => sdk.signOutUser(...args))
+export const signUpWithEmail: SDK['signUpWithEmail'] = (...args) => load().then(sdk => sdk.signUpWithEmail(...args))
+export const signInWithEmail: SDK['signInWithEmail'] = (...args) => load().then(sdk => sdk.signInWithEmail(...args))
+export const addComment: SDK['addComment'] = (...args) => load().then(sdk => sdk.addComment(...args))
+export const getComments: SDK['getComments'] = (...args) => load().then(sdk => sdk.getComments(...args))
+export const addToWatchlist: SDK['addToWatchlist'] = (...args) => load().then(sdk => sdk.addToWatchlist(...args))
+export const getWatchlist: SDK['getWatchlist'] = (...args) => load().then(sdk => sdk.getWatchlist(...args))
+export const checkInWatchlist: SDK['checkInWatchlist'] = (...args) => load().then(sdk => sdk.checkInWatchlist(...args))
+export const removeFromWatchlist: SDK['removeFromWatchlist'] = (...args) => load().then(sdk => sdk.removeFromWatchlist(...args))
+export const addToWatched: SDK['addToWatched'] = (...args) => load().then(sdk => sdk.addToWatched(...args))
+export const getWatched: SDK['getWatched'] = (...args) => load().then(sdk => sdk.getWatched(...args))
+export const removeFromWatched: SDK['removeFromWatched'] = (...args) => load().then(sdk => sdk.removeFromWatched(...args))
+export const checkInWatched: SDK['checkInWatched'] = (...args) => load().then(sdk => sdk.checkInWatched(...args))
+export const updateWatchedRating: SDK['updateWatchedRating'] = (...args) => load().then(sdk => sdk.updateWatchedRating(...args))
+export const resolveLegacy: SDK['resolveLegacy'] = (...args) => load().then(sdk => sdk.resolveLegacy(...args))
+export const getEpisodeProgress: SDK['getEpisodeProgress'] = (...args) => load().then(sdk => sdk.getEpisodeProgress(...args))
+export const setEpisodeProgress: SDK['setEpisodeProgress'] = (...args) => load().then(sdk => sdk.setEpisodeProgress(...args))
+export const deleteComment: SDK['deleteComment'] = (...args) => load().then(sdk => sdk.deleteComment(...args))
+export const addTVComment: SDK['addTVComment'] = (...args) => load().then(sdk => sdk.addTVComment(...args))
+export const deleteTVComment: SDK['deleteTVComment'] = (...args) => load().then(sdk => sdk.deleteTVComment(...args))
+export const getTVComments: SDK['getTVComments'] = (...args) => load().then(sdk => sdk.getTVComments(...args))

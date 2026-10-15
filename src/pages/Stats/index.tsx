@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { mediaHref, mediaKey } from '../../lib/media'
+import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { getWatched, isFirebaseConfigured } from '../../lib/firebase'
 import { useAuthModal } from '../../contexts/AuthModalContext'
 import { IMG } from '../../lib/tmdb'
-import type { WatchedMovie } from '../../types'
+
 
 const A = 'var(--accent)'
 
@@ -30,16 +32,9 @@ export default function Stats() {
   const { user, loading: authLoading } = useAuth()
   const { openSignIn } = useAuthModal()
   const navigate = useNavigate()
-  const [movies, setMovies] = useState<WatchedMovie[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!user) { setLoading(false); return }
-    getWatched(user.uid)
-      .then(setMovies)
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [user])
+  const history = useQuery({ queryKey: ['stats', user?.uid], queryFn: () => getWatched(user!.uid), enabled: !!user, staleTime: 0 })
+  const movies = useMemo(() => (history.data ?? []).filter(m => !m.needsReview), [history.data])
+  const loading = history.isLoading
 
   const stats = useMemo(() => {
     const rated = movies.filter(m => m.myRating > 0)
@@ -60,7 +55,7 @@ export default function Stats() {
 
     const maxGenreCount = topGenres[0]?.count ?? 1
 
-    // Rating distribution (1–5)
+    // Rating distribution (1-5)
     const ratingDist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
     for (const m of rated) {
       if (m.myRating >= 1 && m.myRating <= 5) ratingDist[m.myRating]++
@@ -102,6 +97,8 @@ export default function Stats() {
       </div>
     )
   }
+
+  if (history.isError) return <div className="empty-state" role="alert"><h1>통계를 불러오지 못했습니다</h1><button className="button" onClick={() => void history.refetch()}>다시 시도</button></div>
 
   if (authLoading || loading) {
     return (
@@ -150,8 +147,8 @@ export default function Stats() {
   const rated = movies.filter(m => m.myRating > 0)
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
-      <title>나의 시청 통계 — HOVIE</title>
+    <div style={{ minHeight: '100dvh', backgroundColor: 'var(--bg)' }}>
+      <title>나의 시청 통계 - HOVIE</title>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 20px 80px' }}>
         {/* Header */}
@@ -258,12 +255,12 @@ export default function Stats() {
             <div style={{ marginBottom: 24 }}>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>Top Picks</p>
               <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                내가 가장 좋아하는 영화
+                내가 가장 좋아하는 작품
               </h2>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16 }}>
               {stats.topRated.map(m => (
-                <div key={m.id} onClick={() => navigate(`/movie/${m.id}`)} style={{ cursor: 'pointer' }}>
+                <div key={mediaKey(m)} role="link" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter') navigate(mediaHref(m)) }} onClick={() => navigate(mediaHref(m))} style={{ cursor: 'pointer' }}>
                   <div style={{ position: 'relative', aspectRatio: '2/3', overflow: 'hidden', backgroundColor: 'var(--bg-elevated)', borderRadius: 2, marginBottom: 8 }}>
                     {m.poster_path
                       ? <img src={IMG.poster(m.poster_path, 'w342') ?? ''} alt={m.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />

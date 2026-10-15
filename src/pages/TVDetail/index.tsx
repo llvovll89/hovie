@@ -1,10 +1,13 @@
+import EpisodeProgress from '../../components/ui/EpisodeProgress'
+import SeasonProgress from '../../components/ui/SeasonProgress'
+import DetailSEO from '../../components/ui/DetailSEO'
 import { useState, useEffect, useCallback, useId } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTVDetail } from '../../hooks/useTVDetail'
 import { useAuth } from '../../hooks/useAuth'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { useAuthModal } from '../../contexts/AuthModalContext'
-import { useToast } from '../../contexts/ToastContext'
+import { useToast } from '../../hooks/useToast'
 import { IMG, tmdb } from '../../lib/tmdb'
 import { addToWatchlist, removeFromWatchlist, checkInWatchlist, addToWatched, removeFromWatched, checkInWatched, updateWatchedRating, isFirebaseConfigured } from '../../lib/firebase'
 import MovieCard from '../../components/ui/MovieCard'
@@ -29,6 +32,11 @@ const STATUS_MAP: Record<string, string> = {
 }
 
 export default function TVDetail() {
+  const { user } = useAuth()
+  const { id } = useParams()
+  return <TVDetailContent key={(user?.uid ?? 'guest') + ':' + id} />
+}
+function TVDetailContent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { isMobile } = useBreakpoint()
@@ -37,7 +45,7 @@ export default function TVDetail() {
   const { showToast } = useToast()
   const tvId = Number(id)
 
-  const { show, cast, providers, providerRegion, recommendations, similar, trailerKey, loading, error } = useTVDetail(tvId)
+  const { show, cast, providers, providerRegion, providerCountries, recommendations, similar, trailerKey, koreanRating, nextEpisode, loading, error } = useTVDetail(tvId)
 
   const [inWatchlist, setInWatchlist] = useState(false)
   const [watchlistLoading, setWatchlistLoading] = useState(false)
@@ -50,12 +58,12 @@ export default function TVDetail() {
 
   useEffect(() => {
     if (!user || !tvId || !isFirebaseConfigured) return
-    checkInWatchlist(user.uid, tvId).then(setInWatchlist)
-    checkInWatched(user.uid, tvId).then(({ inWatched, myRating }) => {
+    checkInWatchlist(user.uid, tvId, 'tv').then(setInWatchlist).catch(() => showToast('저장 상태를 확인하지 못했습니다.', 'error'))
+    checkInWatched(user.uid, tvId, 'tv').then(({ inWatched, myRating }) => {
       setInWatched(inWatched)
       setWatchedRating(myRating)
     })
-  }, [user, tvId])
+  }, [user, tvId, showToast])
 
   function toMovieData(): Movie {
     if (!show) throw new Error('no show')
@@ -72,13 +80,13 @@ export default function TVDetail() {
   async function handleShare() {
     const url = window.location.href
     if (navigator.share) {
-      try { await navigator.share({ title: `${show?.name ?? ''} - HOVIE`, url }) } catch {}
+      try { await navigator.share({ title: `${show?.name ?? ''} - HOVIE`, url }) } catch { /* The optional action can be retried. */ }
     } else {
       try {
         await navigator.clipboard.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-      } catch {}
+      } catch { /* The optional action can be retried. */ }
     }
   }
 
@@ -89,7 +97,7 @@ export default function TVDetail() {
     setWatchlistLoading(true)
     try {
       if (inWatchlist) {
-        await removeFromWatchlist(user.uid, tvId)
+        await removeFromWatchlist(user.uid, tvId, 'tv')
         setInWatchlist(false)
         showToast('위시리스트에서 제거했습니다', 'info')
       } else {
@@ -97,7 +105,7 @@ export default function TVDetail() {
         setInWatchlist(true)
         showToast('위시리스트에 추가했습니다')
       }
-    } finally { setWatchlistLoading(false) }
+    } catch { showToast('위시리스트를 변경하지 못했습니다. 다시 시도해 주세요.', 'error') } finally { setWatchlistLoading(false) }
   }
 
   async function saveWatchedEntry() {
@@ -105,7 +113,7 @@ export default function TVDetail() {
     setWatchedLoading(true)
     try {
       if (inWatched) {
-        await updateWatchedRating(user.uid, tvId, watchedRating)
+        await updateWatchedRating(user.uid, tvId, watchedRating, 'tv')
         showToast('별점을 수정했습니다')
       } else {
         await addToWatched(user.uid, toMovieData(), watchedRating)
@@ -113,24 +121,24 @@ export default function TVDetail() {
         showToast('시청 기록을 저장했습니다')
       }
       setWatchedPickerOpen(false)
-    } finally { setWatchedLoading(false) }
+    } catch { showToast('감상 기록을 변경하지 못했습니다. 다시 시도해 주세요.', 'error') } finally { setWatchedLoading(false) }
   }
 
   async function deleteWatchedEntry() {
     if (!user) return
     setWatchedLoading(true)
     try {
-      await removeFromWatched(user.uid, tvId)
+      await removeFromWatched(user.uid, tvId, 'tv')
       setInWatched(false)
       setWatchedRating(0)
       setWatchedPickerOpen(false)
       showToast('시청 기록을 삭제했습니다', 'info')
-    } finally { setWatchedLoading(false) }
+    } catch { showToast('감상 기록을 변경하지 못했습니다. 다시 시도해 주세요.', 'error') } finally { setWatchedLoading(false) }
   }
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+      <div style={{ backgroundColor: 'var(--bg)', minHeight: '100dvh' }}>
         <div className="skeleton" style={{ height: 560 }} />
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px' }}>
           <div className="detail-hero-info">
@@ -182,10 +190,11 @@ export default function TVDetail() {
   const ogImage = IMG.backdrop(show.backdrop_path, 'w780') ?? IMG.poster(show.poster_path, 'w500')
 
   return (
-    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
-      <title>{show.name} — HOVIE</title>
+    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100dvh' }}>
+      <DetailSEO type="TVSeries" title={show.name} overview={show.overview} poster={show.poster_path} date={show.first_air_date} rating={show.vote_average} votes={show.vote_count} />
+      <title>{(show.name) + " - HOVIE"}</title>
       <meta name="description" content={show.overview?.slice(0, 160)} />
-      <meta property="og:title" content={`${show.name} — HOVIE`} />
+      <meta property="og:title" content={`${show.name} - HOVIE`} />
       <meta property="og:description" content={show.overview?.slice(0, 160)} />
       {ogImage && <meta property="og:image" content={ogImage} />}
       <meta property="og:type" content="video.tv_show" />
@@ -414,6 +423,8 @@ export default function TVDetail() {
         </div>
 
         {/* Body */}
+        <div className="release-info">{koreanRating && <span>한국 관람등급: {koreanRating}</span>}{nextEpisode?.air_date && <span>다음 방영 {nextEpisode.air_date} (한국 OTT 공개일과 다를 수 있습니다)</span>}</div>
+        <StreamingInfo providers={providers} region={providerRegion} countries={providerCountries} />
         <div className="movie-detail-layout" style={{ marginBottom: 80 }}>
           <div>
             {show.created_by.length > 0 && (
@@ -466,11 +477,7 @@ export default function TVDetail() {
             </SectionBlock>
           </div>
 
-          <div>
-            <SectionBlock title="어디서 볼까?">
-              <StreamingInfo providers={providers} region={providerRegion} />
-            </SectionBlock>
-          </div>
+
         </div>
 
         {recommendations.length > 0 && <ShowRow label="Recommendations" title="이 시리즈를 좋아한다면" shows={recommendations} />}
@@ -578,7 +585,8 @@ function SeasonAccordion({ showId, season }: { showId: number; season: TVSeason 
             <p style={{ padding: '16px 14px', fontSize: 13, color: 'var(--text-4)', margin: 0 }}>에피소드 정보가 없습니다.</p>
           ) : (
             <div>
-              {episodes.map(ep => <EpisodeRow key={ep.id} ep={ep} />)}
+              <SeasonProgress showId={showId} season={season.season_number} episodes={episodes} />
+              {episodes.map(ep => <EpisodeRow key={ep.id} ep={ep} showId={showId} season={season.season_number} />)}
             </div>
           )}
         </div>
@@ -587,7 +595,7 @@ function SeasonAccordion({ showId, season }: { showId: number; season: TVSeason 
   )
 }
 
-function EpisodeRow({ ep }: { ep: EpisodeItem }) {
+function EpisodeRow({ ep, showId, season }: { ep: EpisodeItem; showId: number; season: number }) {
   const stillUrl = ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : null
   const [imgError, setImgError] = useState(false)
   return (
@@ -609,6 +617,7 @@ function EpisodeRow({ ep }: { ep: EpisodeItem }) {
           </p>
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <EpisodeProgress showId={showId} season={season} episode={ep.episode_number} airDate={ep.air_date} />
           {ep.runtime && <span style={{ fontSize: 10, color: 'var(--text-4)' }}>{ep.runtime}분</span>}
           {ep.vote_average > 0 && <span style={{ fontSize: 10, color: 'var(--accent)' }}>★ {ep.vote_average.toFixed(1)}</span>}
           {ep.air_date && <span style={{ fontSize: 10, color: 'var(--text-4)' }}>{ep.air_date}</span>}

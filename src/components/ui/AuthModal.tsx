@@ -53,7 +53,7 @@ const inputStyle: React.CSSProperties = {
   padding: '11px 42px 11px 14px',
   fontSize: 14,
   outline: 'none',
-  fontFamily: 'Inter, sans-serif',
+  fontFamily: 'Pretendard Variable, sans-serif',
   transition: 'border-color 0.2s',
 }
 
@@ -212,7 +212,7 @@ export default function AuthModal({ mode, onClose, onSwitchMode }: Props) {
             ><EyeIcon open={showPw} /></button>
           </div>
 
-          {/* Password strength — signup only */}
+          {/* Password strength - signup only */}
           {mode === 'signup' && pwTouched && (
             <div style={{ marginTop: -4 }}>
               {/* Strength bar */}
@@ -241,7 +241,7 @@ export default function AuthModal({ mode, onClose, onSwitchMode }: Props) {
             </div>
           )}
 
-          {/* Confirm password — signup only */}
+          {/* Confirm password - signup only */}
           {mode === 'signup' && (
             <div style={{ position: 'relative' }}>
               <input
@@ -290,7 +290,7 @@ export default function AuthModal({ mode, onClose, onSwitchMode }: Props) {
         <p style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 20, textAlign: 'center' }}>
           {mode === 'signup' ? '이미 계정이 있으신가요? ' : '계정이 없으신가요? '}
           <button onClick={() => onSwitchMode(mode === 'signup' ? 'signin' : 'signup')}
-            style={{ background: 'none', border: 'none', color: A, cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'Inter, sans-serif', textDecoration: 'underline' }}
+            style={{ background: 'none', border: 'none', color: A, cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'Pretendard Variable, sans-serif', textDecoration: 'underline' }}
           >
             {mode === 'signup' ? '로그인' : '무료로 가입하기'}
           </button>

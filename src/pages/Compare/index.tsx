@@ -1,628 +1,104 @@
-import { useState, useEffect, useRef } from 'react'
-import { tmdb, IMG } from '../../lib/tmdb'
-import { useBreakpoint } from '../../hooks/useBreakpoint'
-import Spinner from '../../components/ui/Spinner'
-import type { MovieDetail, CastMember, CrewMember, Movie } from '../../types'
+import { useEffect, useId, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowsLeftRight } from '@phosphor-icons/react/dist/csr/ArrowsLeftRight'
+import { Shuffle } from '@phosphor-icons/react/dist/csr/Shuffle'
+import { MagnifyingGlass } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
+import { FilmStrip } from '@phosphor-icons/react/dist/csr/FilmStrip'
+import { ArrowUpRight } from '@phosphor-icons/react/dist/csr/ArrowUpRight'
+import { X } from '@phosphor-icons/react/dist/csr/X'
+import { tmdb, IMG, type MovieBundle } from '../../lib/tmdb'
+import './compare.css'
 
-const A = 'var(--accent)'
-const AH = 'var(--accent-hover)'
-const AO = 'var(--accent-on)'
-
-// ── Types ─────────────────────────────────────────────────────
-
-interface SlotData {
-  movie: MovieDetail
-  cast: CastMember[]
-  directors: string[]
-}
-
-interface CompRow {
-  label: string
-  aNode: React.ReactNode
-  bNode: React.ReactNode
-  winner: 'A' | 'B' | 'tie' | null
-  pctA?: number
-  pctB?: number
-}
-
-// ── Build comparison rows ─────────────────────────────────────
-
-function buildRows(slotA: SlotData, slotB: SlotData): CompRow[] {
-  const a = slotA.movie
-  const b = slotB.movie
-
-  function win(vA: number | null, vB: number | null): 'A' | 'B' | 'tie' | null {
-    if (vA === null || vB === null) return null
-    if (vA === vB) return 'tie'
-    return vA > vB ? 'A' : 'B'
-  }
-
-  function bars(vA: number | null, vB: number | null): { pctA?: number; pctB?: number } {
-    if (vA === null && vB === null) return {}
-    const max = Math.max(vA ?? 0, vB ?? 0)
-    if (max === 0) return {}
-    return {
-      pctA: vA !== null ? (vA / max) * 100 : undefined,
-      pctB: vB !== null ? (vB / max) * 100 : undefined,
-    }
-  }
-
-  function fmtMoney(n: number) {
-    if (!n) return '-'
-    if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`
-    return `$${(n / 1_000_000).toFixed(0)}M`
-  }
-
-  function fmtRuntime(m: number) {
-    if (!m) return '-'
-    return `${Math.floor(m / 60)}h ${m % 60}m`
-  }
-
-  const roiA = a.budget > 0 && a.revenue > 0 ? a.revenue / a.budget : null
-  const roiB = b.budget > 0 && b.revenue > 0 ? b.revenue / b.budget : null
-
-  const rows: CompRow[] = []
-
-  rows.push({
-    label: '평점',
-    aNode: a.vote_average > 0 ? `★ ${a.vote_average.toFixed(1)}` : '-',
-    bNode: b.vote_average > 0 ? `★ ${b.vote_average.toFixed(1)}` : '-',
-    winner: win(a.vote_average || null, b.vote_average || null),
-    ...bars(a.vote_average || null, b.vote_average || null),
-  })
-
-  rows.push({
-    label: '투표 수',
-    aNode: a.vote_count > 0 ? `${a.vote_count.toLocaleString()}표` : '-',
-    bNode: b.vote_count > 0 ? `${b.vote_count.toLocaleString()}표` : '-',
-    winner: win(a.vote_count || null, b.vote_count || null),
-    ...bars(a.vote_count || null, b.vote_count || null),
-  })
-
-  rows.push({
-    label: '개봉연도',
-    aNode: a.release_date?.split('-')[0] || '-',
-    bNode: b.release_date?.split('-')[0] || '-',
-    winner: null,
-  })
-
-  rows.push({
-    label: '러닝타임',
-    aNode: fmtRuntime(a.runtime),
-    bNode: fmtRuntime(b.runtime),
-    winner: null,
-  })
-
-  rows.push({
-    label: '인기 지수',
-    aNode: a.popularity.toFixed(0),
-    bNode: b.popularity.toFixed(0),
-    winner: win(a.popularity, b.popularity),
-    ...bars(a.popularity, b.popularity),
-  })
-
-  rows.push({
-    label: '장르',
-    aNode: a.genres.map(g => g.name).join(', ') || '-',
-    bNode: b.genres.map(g => g.name).join(', ') || '-',
-    winner: null,
-  })
-
-  if (a.budget > 0 || b.budget > 0) {
-    rows.push({
-      label: '제작 예산',
-      aNode: fmtMoney(a.budget),
-      bNode: fmtMoney(b.budget),
-      winner: null,
-      ...bars(a.budget > 0 ? a.budget : null, b.budget > 0 ? b.budget : null),
-    })
-  }
-
-  if (a.revenue > 0 || b.revenue > 0) {
-    rows.push({
-      label: '전 세계 수익',
-      aNode: fmtMoney(a.revenue),
-      bNode: fmtMoney(b.revenue),
-      winner: win(a.revenue > 0 ? a.revenue : null, b.revenue > 0 ? b.revenue : null),
-      ...bars(a.revenue > 0 ? a.revenue : null, b.revenue > 0 ? b.revenue : null),
-    })
-  }
-
-  if (roiA !== null || roiB !== null) {
-    rows.push({
-      label: 'ROI 수익률',
-      aNode: roiA !== null ? `${roiA.toFixed(1)}x` : '-',
-      bNode: roiB !== null ? `${roiB.toFixed(1)}x` : '-',
-      winner: win(roiA, roiB),
-    })
-  }
-
-  rows.push({
-    label: '제작 국가',
-    aNode: a.production_countries.map(c => c.name).join(', ') || '-',
-    bNode: b.production_countries.map(c => c.name).join(', ') || '-',
-    winner: null,
-  })
-
-  rows.push({
-    label: '감독',
-    aNode: slotA.directors.join(', ') || '-',
-    bNode: slotB.directors.join(', ') || '-',
-    winner: null,
-  })
-
-  rows.push({
-    label: '주연 배우',
-    aNode: slotA.cast.slice(0, 3).map(c => c.name).join(', ') || '-',
-    bNode: slotB.cast.slice(0, 3).map(c => c.name).join(', ') || '-',
-    winner: null,
-  })
-
-  return rows
-}
-
-// ── Main page ─────────────────────────────────────────────────
+function validId(value: string | null) { return value && /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : null }
+function money(value: number) { return value > 0 ? new Intl.NumberFormat('ko-KR', { notation:'compact', maximumFractionDigits:1 }).format(value) + ' 달러' : '정보 없음' }
+function duration(value: number) { return value > 0 ? (Math.floor(value/60) ? Math.floor(value/60)+'시간 ' : '') + (value%60 ? value%60+'분' : '') : '정보 없음' }
 
 export default function Compare() {
-  const [slotA, setSlotA] = useState<SlotData | null>(null)
-  const [slotB, setSlotB] = useState<SlotData | null>(null)
-  const [loadingA, setLoadingA] = useState(false)
-  const [loadingB, setLoadingB] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const a = validId(params.get('a')), b = validId(params.get('b'))
+  const first = useQuery({ queryKey:['compare-movie',a], queryFn:({ signal }) => tmdb.movieBundle(a!,signal), enabled:!!a })
+  const second = useQuery({ queryKey:['compare-movie',b], queryFn:({ signal }) => tmdb.movieBundle(b!,signal), enabled:!!b })
   const [randomLoading, setRandomLoading] = useState(false)
-  const { isMobile } = useBreakpoint()
-
-  async function loadSlot(movieId: number, slot: 'A' | 'B') {
-    const setLoading = slot === 'A' ? setLoadingA : setLoadingB
-    setLoading(true)
+  const [randomError, setRandomError] = useState('')
+  function select(side:'a'|'b', id:number|null) { const next=new URLSearchParams(params); if(id)next.set(side,String(id));else next.delete(side);setParams(next) }
+  async function randomPair() {
+    setRandomLoading(true);setRandomError('')
     try {
-      const [detail, credits] = await Promise.all([
-        tmdb.detail(movieId),
-        tmdb.credits(movieId),
-      ])
-      const directors = (credits.crew as CrewMember[])
-        .filter(c => c.job === 'Director')
-        .map(d => d.name)
-      const cast = (credits.cast as CastMember[]).slice(0, 5)
-      const data: SlotData = { movie: detail as MovieDetail, cast, directors }
-      if (slot === 'A') setSlotA(data)
-      else setSlotB(data)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
+      const movies=(await tmdb.trending('week')).results
+      if(movies.length<2)throw new Error()
+      const i=Math.floor(Math.random()*movies.length)
+      const rest=movies.filter(m=>m.id!==movies[i].id)
+      if(!rest.length)throw new Error()
+      setParams({ a:String(movies[i].id),b:String(rest[Math.floor(Math.random()*rest.length)].id) })
+    } catch { setRandomError('작품을 고르지 못했습니다. 다시 시도해 주세요.') }
+    finally { setRandomLoading(false) }
   }
-
-  async function handleRandom() {
-    setRandomLoading(true)
-    try {
-      const data = await tmdb.trending('week')
-      const movies = (data.results as Movie[]).filter(m => m.id)
-      const shuffled = [...movies].sort(() => Math.random() - 0.5)
-      await Promise.all([
-        loadSlot(shuffled[0].id, 'A'),
-        loadSlot(shuffled[1].id, 'B'),
-      ])
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setRandomLoading(false)
-    }
-  }
-
-  const rows = slotA && slotB ? buildRows(slotA, slotB) : null
-  const winsA = rows?.filter(r => r.winner === 'A').length ?? 0
-  const winsB = rows?.filter(r => r.winner === 'B').length ?? 0
-  const overallWinner = winsA > winsB ? 'A' : winsB > winsA ? 'B' : 'tie'
-
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', padding: '36px 20px 80px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-
-        {/* Page header */}
-        <div style={{ marginBottom: 36 }}>
-          <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>Compare</p>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>영화 비교</h1>
-            <RandomButton loading={randomLoading} onClick={handleRandom} />
-          </div>
-        </div>
-
-        {/* Pickers */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 72px 1fr',
-          gap: isMobile ? 12 : 0,
-          marginBottom: 40,
-          alignItems: 'start',
-        }}>
-          <MoviePicker label="A" slot={slotA} loading={loadingA || (randomLoading && !slotA)} onSelect={id => loadSlot(id, 'A')} onClear={() => setSlotA(null)} side="left" />
-          {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 80 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--border-2)', letterSpacing: '0.05em' }}>VS</span>
-            </div>
-          )}
-          <MoviePicker label="B" slot={slotB} loading={loadingB || (randomLoading && !slotB)} onSelect={id => loadSlot(id, 'B')} onClear={() => setSlotB(null)} side="right" />
-        </div>
-
-        {/* Comparison result */}
-        {rows && slotA && slotB && (
-          <div style={{ border: '1px solid var(--border-2)' }}>
-
-            {/* Movie header */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 52px 1fr' : '1fr 96px 1fr', borderBottom: '1px solid var(--border-2)' }}>
-              <MovieHeader slot={slotA} side="A" winner={overallWinner === 'A'} wins={winsA} isMobile={isMobile} />
-              <VsCenter winsA={winsA} winsB={winsB} isMobile={isMobile} />
-              <MovieHeader slot={slotB} side="B" winner={overallWinner === 'B'} wins={winsB} isMobile={isMobile} />
-            </div>
-
-            {/* Data rows */}
-            {rows.map((row, i) => (
-              <CompRowItem key={i} row={row} isMobile={isMobile} />
-            ))}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!rows && !randomLoading && (
-          <div style={{ textAlign: 'center', padding: '72px 20px', borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⚔️</div>
-            <p style={{ color: 'var(--text-3)', fontSize: 15, lineHeight: 1.8, margin: 0 }}>
-              두 영화를 선택하거나{' '}
-              <button
-                onClick={handleRandom}
-                style={{ background: 'none', border: 'none', color: A, fontSize: 15, cursor: 'pointer', padding: 0, fontFamily: 'Inter, sans-serif', fontWeight: 600 }}
-              >
-                랜덤 비교
-              </button>
-              를 눌러<br />어떤 영화가 더 나은지 확인해보세요.
-            </p>
-          </div>
-        )}
-
-        {randomLoading && !rows && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-            <Spinner size={40} />
-          </div>
-        )}
-      </div>
+  const left=first.data, right=second.data
+  return <div className="page-shell compare-page">
+    <title>작품 비교 - HOVIE</title>
+    <div className="page-heading compare-heading"><div><h1>두 작품, 다른 매력.</h1><p>평점부터 러닝타임까지 나란히 놓고 골라보세요.</p></div><button className="button" disabled={randomLoading} onClick={() => void randomPair()}><Shuffle size={18} />{randomLoading?'고르는 중…':'랜덤 비교'}</button></div>
+    {randomError && <p role="alert" className="error-message">{randomError}</p>}
+    <div className="comparison-stage">
+      <FilmSlot side="A" movie={left} loading={first.isFetching && !left} error={first.isError} selected={a} other={b} onSelect={id=>select('a',id)} retry={()=>void first.refetch()} />
+      <button className="compare-swap" aria-label="두 작품 자리 바꾸기" disabled={!a&&!b} onClick={()=>{ const next=new URLSearchParams(params);if(b)next.set('a',String(b));else next.delete('a');if(a)next.set('b',String(a));else next.delete('b');setParams(next) }}><ArrowsLeftRight size={21} /></button>
+      <FilmSlot side="B" movie={right} loading={second.isFetching && !right} error={second.isError} selected={b} other={a} onSelect={id=>select('b',id)} retry={()=>void second.refetch()} />
     </div>
-  )
+    {left&&right ? <Comparison a={left} b={right} /> : <section className="compare-start"><FilmStrip size={30} /><div><h2>{a||b?'한 작품을 더 골라주세요':'어떤 두 작품이 궁금한가요?'}</h2><p>영화를 검색하거나 익숙한 두 작품으로 시작해 보세요.</p></div><button className="button" onClick={()=>setParams({a:'157336',b:'27205'})}>인터스텔라 × 인셉션</button></section>}
+  </div>
 }
 
-// ── RandomButton ──────────────────────────────────────────────
-
-function RandomButton({ loading, onClick }: { loading: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 7,
-        padding: '10px 22px',
-        backgroundColor: loading ? 'var(--bg-elevated)' : A,
-        color: loading ? 'var(--text-3)' : AO,
-        border: 'none', fontSize: 11, letterSpacing: '0.15em', fontWeight: 600,
-        cursor: loading ? 'wait' : 'pointer', transition: 'background-color 0.2s',
-        fontFamily: 'Inter, sans-serif',
-      }}
-      onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = AH }}
-      onMouseLeave={e => { e.currentTarget.style.backgroundColor = loading ? 'var(--bg-elevated)' : A }}
-    >
-      {loading ? <Spinner size={13} /> : (
-        <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <polyline points="16 3 21 3 21 8" />
-          <line x1="4" y1="20" x2="21" y2="3" />
-          <polyline points="21 16 21 21 16 21" />
-          <line x1="15" y1="15" x2="21" y2="21" />
-          <line x1="4" y1="4" x2="9" y2="9" />
-        </svg>
-      )}
-      랜덤 비교
-    </button>
-  )
+function FilmSlot({ side,movie,loading,error,selected,other,onSelect,retry }:{side:'A'|'B';movie?:MovieBundle;loading:boolean;error:boolean;selected:number|null;other:number|null;onSelect:(id:number|null)=>void;retry:()=>void}) {
+  const id=useId(), wrapper=useRef<HTMLDivElement>(null), input=useRef<HTMLInputElement>(null)
+  const [query,setQuery]=useState(''),[debounced,setDebounced]=useState(''),[open,setOpen]=useState(false),[active,setActive]=useState(-1)
+  useEffect(()=>{const timer=setTimeout(()=>setDebounced(query.trim()),250);return()=>clearTimeout(timer)},[query])
+  const search=useQuery({queryKey:['compare-search',debounced],queryFn:({signal})=>tmdb.search(debounced,1,signal),enabled:open&&debounced.length>=2})
+  const results=debounced===query.trim()?(search.data?.results??[]).slice(0,6):[]
+  const visible=open&&query.trim().length>=2
+  useEffect(()=>{
+    if(!open)return
+    function outside(e:PointerEvent){if(!wrapper.current?.contains(e.target as Node))setOpen(false)}
+    document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside)
+  },[open])
+  function pick(movieId:number){if(movieId===other)return;onSelect(movieId);setQuery('');setDebounced('');setOpen(false);setActive(-1);input.current?.focus()}
+  const poster=movie?.poster_path ? IMG.poster(movie.poster_path,'w342') : null
+  return <section className={'compare-film compare-side-'+side} aria-label={'작품 '+side}>
+    <div className="compare-picker" ref={wrapper} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setOpen(false)}}><span className="compare-letter" aria-hidden="true">{side}</span><MagnifyingGlass size={19} aria-hidden="true" />
+      <input ref={input} id={id} aria-label={'작품 '+side+' 검색'} role="combobox" aria-autocomplete="list" aria-expanded={visible} aria-controls={visible?id+'-results':undefined} aria-activedescendant={visible&&active>=0&&results[active]?id+'-result-'+active:undefined} autoComplete="off" placeholder={movie?'다른 영화로 바꾸기':'영화 제목으로 검색'} value={query} onFocus={()=>setOpen(true)} onChange={e=>{setQuery(e.target.value);setOpen(true);setActive(-1)}} onKeyDown={e=>{
+        if(e.key==='Escape'){setOpen(false);return}
+        if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();setOpen(true);setActive(v=>results.length?(v+(e.key==='ArrowDown'?1:-1)+results.length)%results.length:-1)}
+        if(e.key==='Enter'&&visible&&active>=0&&results[active]){e.preventDefault();pick(results[active].id)}
+      }} />
+      {selected&&<button className="icon-button compare-clear" aria-label={'작품 '+side+' 선택 해제'} onClick={()=>onSelect(null)}><X size={16} /></button>}
+      {visible&&<div className="compare-suggestions"><div role="listbox" id={id+'-results'} aria-label={'작품 '+side+' 검색 결과'}>{debounced===query.trim()&&results.map((m,i)=><div role="option" aria-selected={active===i} aria-disabled={m.id===other} id={id+'-result-'+i} key={m.id} className={'compare-suggestion '+(i===active?'active':'')} onPointerMove={()=>setActive(i)} onMouseDown={e=>e.preventDefault()} onClick={()=>pick(m.id)}>{m.poster_path?<img src={IMG.poster(m.poster_path,'w185')!} alt="" />:<FilmStrip size={24} />}<span><strong>{m.title}</strong><small>{m.id===other?'이미 선택한 작품':m.release_date?.slice(0,4)||'개봉일 미정'}</small></span>{m.vote_count>0&&<small>★ {m.vote_average.toFixed(1)}</small>}</div>)}</div>
+        {debounced!==query.trim()||search.isFetching?<p role="status">검색 중…</p>:search.isError?<p role="alert">검색하지 못했습니다. <button className="text-button" onClick={()=>void search.refetch()}>다시 시도</button></p>:!results.length?<p role="status">검색 결과가 없습니다.</p>:null}
+      </div>}
+    </div>
+    {loading?<div className="compare-film-loading" role="status"><div className="skeleton" /><p>작품을 불러오는 중…</p></div>:error?<div className="compare-film-empty" role="alert"><FilmStrip size={36} /><h2>작품을 불러오지 못했습니다</h2><button className="button" onClick={retry}>다시 시도</button></div>:movie?<>
+      <div className="compare-film-art">{movie.backdrop_path&&<img className="compare-backdrop" src={IMG.backdrop(movie.backdrop_path,'w780')!} alt="" />}<div className="compare-art-scrim" />{poster?<img className="compare-poster" src={poster} alt={movie.title+' 포스터'} width="120" height="180" />:<div className="compare-poster-placeholder"><FilmStrip size={38} /></div>}<span className="compare-art-tag">{movie.release_date?.slice(0,4)||'개봉일 미정'}</span></div>
+      <div className="compare-film-info"><div className="compare-title-row"><h2>{movie.title}</h2><Link className="icon-button" to={'/movie/'+movie.id} aria-label={movie.title+' 상세 보기'}><ArrowUpRight size={21} /></Link></div><p className="compare-original">{movie.original_title}</p><div className="compare-genre-tags">{movie.genres.slice(0,3).map(g=><span key={g.id}>{g.name}</span>)}</div><p className="compare-synopsis">{movie.overview||'등록된 줄거리가 없습니다.'}</p></div>
+    </>:<div className="compare-film-empty"><div className="compare-empty-poster"><FilmStrip size={36} /></div><h2>{side==='A'?'첫 번째 작품':'두 번째 작품'}</h2><p>위 검색창에서 비교할 영화를 골라주세요.</p></div>}
+  </section>
 }
 
-// ── MoviePicker ───────────────────────────────────────────────
-
-function MoviePicker({
-  label, slot, loading, onSelect, onClear, side,
-}: {
-  label: string; slot: SlotData | null; loading: boolean
-  onSelect: (id: number) => void; onClear: () => void; side: 'left' | 'right'
-}) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<Movie[]>([])
-  const [searching, setSearching] = useState(false)
-  const [open, setOpen] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
-
-  function handleInput(val: string) {
-    setQuery(val)
-    if (timerRef.current !== null) clearTimeout(timerRef.current)
-    if (!val.trim()) { setResults([]); setOpen(false); return }
-    setSearching(true)
-    timerRef.current = setTimeout(async () => {
-      try {
-        const d = await tmdb.search(val.trim(), 1)
-        setResults((d.results as Movie[]).slice(0, 6))
-        setOpen(true)
-      } finally { setSearching(false) }
-    }, 280)
-  }
-
-  function pick(movie: Movie) {
-    onSelect(movie.id)
-    setQuery(''); setResults([]); setOpen(false)
-  }
-
-  if (loading) {
-    return (
-      <div style={{ border: '1px solid var(--border-2)', minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Spinner size={28} />
-      </div>
-    )
-  }
-
-  if (slot) {
-    const poster = IMG.poster(slot.movie.poster_path, 'w342')
-    const isRight = side === 'right'
-    return (
-      <div style={{
-        border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-elevated)',
-        display: 'flex', flexDirection: isRight ? 'row-reverse' : 'row',
-        gap: 14, padding: '14px 16px', alignItems: 'flex-start',
-      }}>
-        <div style={{ width: 56, flexShrink: 0 }}>
-          {poster
-            ? <img src={poster} alt={slot.movie.title} style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block' }} />
-            : <div style={{ width: '100%', aspectRatio: '2/3', backgroundColor: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🎬</div>
-          }
-        </div>
-        <div style={{ flex: 1, minWidth: 0, textAlign: isRight ? 'right' : 'left' }}>
-          <p style={{ fontSize: 9, color: A, letterSpacing: '0.25em', textTransform: 'uppercase', margin: '0 0 5px' }}>영화 {label}</p>
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {slot.movie.title}
-          </p>
-          <p style={{ fontSize: 11, color: 'var(--text-4)', margin: '0 0 8px' }}>
-            {slot.movie.release_date?.split('-')[0]}
-            {slot.movie.vote_average > 0 && ` · ★ ${slot.movie.vote_average.toFixed(1)}`}
-          </p>
-          <button
-            onClick={onClear}
-            style={{ background: 'none', border: '1px solid var(--border-2)', color: 'var(--text-4)', fontSize: 10, letterSpacing: '0.1em', padding: '4px 12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = A; e.currentTarget.style.color = A }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-2)'; e.currentTarget.style.color = 'var(--text-4)' }}
-          >
-            변경
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
-      <div style={{ border: '1px solid var(--border-2)', padding: '12px 14px' }}>
-        <p style={{ fontSize: 9, color: A, letterSpacing: '0.25em', textTransform: 'uppercase', margin: '0 0 10px' }}>
-          영화 {label} 선택
-        </p>
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            value={query}
-            onChange={e => handleInput(e.target.value)}
-            placeholder="영화 제목으로 검색..."
-            style={{
-              width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-3)',
-              color: 'var(--text)', padding: '10px 36px 10px 14px', fontSize: 13,
-              outline: 'none', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', transition: 'border-color 0.2s',
-            }}
-            onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,153,255,0.4)')}
-            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-3)')}
-          />
-          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-            {searching
-              ? <Spinner size={12} />
-              : <svg width="13" height="13" fill="none" stroke="var(--text-4)" strokeWidth="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" strokeLinecap="round" /></svg>
-            }
-          </div>
-        </div>
-      </div>
-
-      {open && results.length > 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-2)', borderTop: 'none', zIndex: 200, maxHeight: 300, overflowY: 'auto' }}>
-          {results.map(movie => (
-            <button
-              key={movie.id}
-              onClick={() => pick(movie)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', textAlign: 'left', fontFamily: 'Inter, sans-serif', transition: 'background 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--bg-hover)')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              <div style={{ width: 28, height: 42, flexShrink: 0, backgroundColor: 'var(--bg-elevated)', overflow: 'hidden' }}>
-                {movie.poster_path
-                  ? <img src={IMG.poster(movie.poster_path, 'w185')!} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>🎬</div>
-                }
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 12, fontWeight: 500, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{movie.title}</p>
-                <p style={{ fontSize: 10, color: 'var(--text-4)', margin: 0 }}>{movie.release_date?.split('-')[0]}</p>
-              </div>
-              {movie.vote_average > 0 && (
-                <span style={{ fontSize: 11, color: A, flexShrink: 0 }}>★ {movie.vote_average.toFixed(1)}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
+function Comparison({a,b}:{a:MovieBundle;b:MovieBundle}) {
+  const rated=a.vote_count>0&&b.vote_count>0
+  const ratingGap=Math.abs(a.vote_average-b.vote_average)
+  const runtimeGap=Math.abs(a.runtime-b.runtime)
+  const sameGenres=a.genres.filter(g=>b.genres.some(other=>other.id===g.id))
+  return <div className="comparison-results">
+    <div className="comparison-section-heading"><div><h2>차이를 한눈에</h2><p>색상은 위 작품의 A·B 표시와 연결됩니다.</p></div><div className="compare-legend"><span><i className="series-A" />A</span><span><i className="series-B" />B</span></div></div>
+    <div className="compare-highlights">
+      <section className="compare-rating-panel"><div className="compare-metric-heading"><h3>관객 평점</h3><span>TMDB / 10점</span></div><div className="compare-rings">{[a,b].map((m,i)=><div key={i} className={'compare-score compare-side-'+(i?'B':'A')}><div className="compare-ring"><svg viewBox="0 0 112 112" aria-hidden="true"><circle className="ring-track" cx="56" cy="56" r="48" /><circle className="ring-value" cx="56" cy="56" r="48" pathLength="100" strokeDasharray={(m.vote_count>0?m.vote_average*10:0)+' 100'} /></svg><strong>{m.vote_count>0?m.vote_average.toFixed(1):'미평가'}</strong></div><span><b>{i?'B':'A'}</b> {m.title}</span><small>{m.vote_count.toLocaleString()}명 평가</small></div>)}</div><p className="compare-insight">{rated?(ratingGap<0.05?'두 작품의 평균 평점이 같습니다.':(a.vote_average>b.vote_average?'A':'B')+' 작품의 평점이 '+ratingGap.toFixed(1)+'점 높아요.'):'평가 데이터가 충분하지 않습니다.'}</p></section>
+      <section className="compare-runtime-panel"><div className="compare-metric-heading"><h3>러닝타임</h3><span>작품 한 편 기준</span></div><BarPair a={a.runtime} b={b.runtime} format={duration} /><p className="compare-insight">{a.runtime>0&&b.runtime>0?(runtimeGap?(a.runtime<b.runtime?'A':'B')+' 작품을 '+runtimeGap+'분 더 가볍게 볼 수 있어요.':'두 작품의 러닝타임이 같습니다.'):'러닝타임 정보가 없는 작품이 있습니다.'}</p><div className="compare-common"><h3>함께 가진 장르</h3><div className="compare-genre-tags">{sameGenres.length?sameGenres.map(g=><span key={g.id}>{g.name}</span>):<p>겹치는 장르가 없는 두 작품이에요.</p>}</div></div></section>
     </div>
-  )
+    <section className="compare-finance"><div className="comparison-section-heading"><div><h2>숫자로 보는 규모</h2><p>각 항목의 두 작품 중 큰 값을 기준으로 막대를 표시합니다.</p></div></div><div className="compare-finance-grid"><div><h3>제작 예산</h3><BarPair a={a.budget} b={b.budget} format={money} /></div><div><h3>전 세계 흥행 수익</h3><BarPair a={a.revenue} b={b.revenue} format={money} /></div></div><p className="helper">금액은 TMDB에 등록된 미국 달러 기준입니다. 0으로 등록된 금액은 정보 없음으로 표시하며, 흥행 수익은 순이익을 뜻하지 않습니다.</p></section>
+    <details className="compare-extra"><summary>인기 지수와 수익 배수 더 보기</summary><div className="compare-finance-grid"><div><h3>TMDB 인기 지수</h3><BarPair a={a.popularity} b={b.popularity} format={v=>v>0?v.toFixed(1):'정보 없음'} /></div><div><h3>예산 대비 흥행 수익</h3><BarPair a={a.budget>0&&a.revenue>0?a.revenue/a.budget:0} b={b.budget>0&&b.revenue>0?b.revenue/b.budget:0} format={v=>v>0?v.toFixed(1)+'배':'정보 없음'} /></div></div><p className="helper">수익 배수는 전 세계 흥행 수익을 제작 예산으로 나눈 값이며 순이익률이 아닙니다.</p></details>
+    <section className="compare-credits"><div className="comparison-section-heading"><div><h2>이야기를 만든 사람들</h2></div></div><div className="compare-credits-grid">{[a,b].map((m,i)=><div key={i} className={'compare-side-'+(i?'B':'A')}><div className="compare-credit-title"><span className="compare-letter">{i?'B':'A'}</span><strong>{m.title}</strong></div><p className="compare-production">제작 국가: {m.production_countries.map(c=>c.name).join(', ')||'정보 없음'}</p><p className="compare-director"><span>감독</span> {m.credits?.crew.filter(c=>c.job==='Director').map(c=>c.name).join(', ')||'정보 없음'}</p><div className="compare-cast">{m.credits?.cast.slice(0,3).map(c=><Link key={c.id} to={'/person/'+c.id}>{c.profile_path?<img src={IMG.poster(c.profile_path,'w185')!} alt="" width="48" height="48" />:<span className="cast-placeholder"><FilmStrip size={22} /></span>}<span><strong>{c.name}</strong><small>{c.character}</small></span></Link>)}{!m.credits?.cast.length&&<p className="helper">등록된 출연진이 없습니다.</p>}</div></div>)}</div></section>
+    <p className="compare-footnote">평점과 흥행 수치만으로 작품의 완성도나 취향을 판단할 수는 없습니다. 마음이 가는 이야기를 골라보세요.</p>
+  </div>
 }
-
-// ── VsCenter ──────────────────────────────────────────────────
-
-function VsCenter({ winsA, winsB, isMobile }: { winsA: number; winsB: number; isMobile: boolean }) {
-  const total = winsA + winsB
-  const pctA = total > 0 ? (winsA / total) * 100 : 50
-  const pctB = total > 0 ? (winsB / total) * 100 : 50
-
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: isMobile ? '16px 4px' : '24px 8px',
-      backgroundColor: 'var(--bg-elevated)',
-      borderLeft: '1px solid var(--border-2)', borderRight: '1px solid var(--border-2)',
-      gap: 8,
-    }}>
-      <span style={{ fontSize: isMobile ? 14 : 18, fontWeight: 700, color: 'var(--text-4)' }}>VS</span>
-      {total > 0 && (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <p style={{ fontSize: 8, color: 'var(--text-5)', letterSpacing: '0.1em', margin: 0 }}>SCORE</p>
-          <p style={{ fontSize: isMobile ? 15 : 20, fontWeight: 700, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
-            {winsA}<span style={{ color: 'var(--text-4)', fontSize: isMobile ? 10 : 12, fontWeight: 400, margin: '0 3px' }}>—</span>{winsB}
-          </p>
-          {/* Win ratio bar */}
-          <div style={{ width: '100%', height: 4, display: 'flex', overflow: 'hidden', borderRadius: 0 }}>
-            <div style={{ width: `${pctA}%`, height: '100%', backgroundColor: winsA >= winsB ? A : 'var(--border-2)', transition: 'width 0.6s ease' }} />
-            <div style={{ width: `${pctB}%`, height: '100%', backgroundColor: winsB > winsA ? A : 'var(--border-2)', transition: 'width 0.6s ease' }} />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── MovieHeader ───────────────────────────────────────────────
-
-function MovieHeader({ slot, side, winner, wins, isMobile }: {
-  slot: SlotData; side: 'A' | 'B'; winner: boolean; wins: number; isMobile: boolean
-}) {
-  const m = slot.movie
-  const poster = IMG.poster(m.poster_path, 'w342')
-  const isRight = side === 'B'
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: isRight ? 'row-reverse' : 'row',
-      gap: isMobile ? 10 : 20,
-      padding: isMobile ? '16px 12px' : '24px 24px',
-      alignItems: 'center',
-      backgroundColor: winner ? 'rgba(0,153,255,0.04)' : 'transparent',
-      position: 'relative',
-    }}>
-      {winner && (
-        <div style={{
-          position: 'absolute', top: 10,
-          ...(isRight ? { left: 10 } : { right: 10 }),
-          backgroundColor: A, color: AO,
-          fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
-          padding: '3px 8px',
-        }}>
-          승리
-        </div>
-      )}
-      <div style={{ width: isMobile ? 44 : 68, flexShrink: 0 }}>
-        {poster
-          ? <img
-            src={poster}
-            alt={m.title}
-            style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block', outline: winner ? `2px solid ${A}` : 'none', outlineOffset: 2 }}
-          />
-          : <div style={{ width: '100%', aspectRatio: '2/3', backgroundColor: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎬</div>
-        }
-      </div>
-      <div style={{ flex: 1, minWidth: 0, textAlign: isRight ? 'right' : 'left' }}>
-        <p style={{ fontSize: 9, color: A, letterSpacing: '0.22em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-          영화 {side}
-        </p>
-        <p style={{ fontSize: isMobile ? 12 : 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px', lineHeight: 1.3, wordBreak: 'break-word' }}>
-          {m.title}
-        </p>
-        <p style={{ fontSize: 11, color: 'var(--text-4)', margin: '0 0 6px' }}>
-          {m.release_date?.split('-')[0]}
-        </p>
-        {wins > 0 && (
-          <p style={{ fontSize: 11, color: winner ? A : 'var(--text-4)', margin: 0, fontWeight: winner ? 600 : 400 }}>
-            {wins}개 항목 우세
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ── CompRowItem ───────────────────────────────────────────────
-
-function CompRowItem({ row, isMobile }: { row: CompRow; isMobile: boolean }) {
-  const aWins = row.winner === 'A'
-  const bWins = row.winner === 'B'
-  const labelW = isMobile ? 64 : 108
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: `1fr ${labelW}px 1fr`, borderBottom: '1px solid var(--border)' }}>
-
-      {/* A value */}
-      <div style={{
-        padding: isMobile ? '11px 10px' : '13px 20px',
-        textAlign: 'right',
-        backgroundColor: aWins ? 'rgba(0,153,255,0.05)' : 'transparent',
-        borderLeft: aWins ? `2px solid ${A}` : '2px solid transparent',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      }}>
-        <span style={{ fontSize: isMobile ? 11 : 13, color: aWins ? A : 'var(--text-2)', fontWeight: aWins ? 600 : 400, wordBreak: 'break-word', lineHeight: 1.4 }}>
-          {row.aNode}
-        </span>
-        {row.pctA !== undefined && (
-          <div style={{ marginTop: 5, display: 'flex', justifyContent: 'flex-end' }}>
-            <div style={{ width: '100%', height: 3, backgroundColor: 'var(--bg-elevated)', overflow: 'hidden' }}>
-              <div style={{ width: `${row.pctA}%`, height: '100%', backgroundColor: aWins ? A : 'rgba(255,255,255,0.12)', marginLeft: 'auto', transition: 'width 0.6s ease' }} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Label */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: isMobile ? '11px 4px' : '13px 6px',
-        backgroundColor: 'var(--bg-elevated)',
-        borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)',
-      }}>
-        <span style={{ fontSize: isMobile ? 8 : 10, color: 'var(--text-4)', letterSpacing: '0.08em', textAlign: 'center', lineHeight: 1.4 }}>
-          {row.label}
-        </span>
-      </div>
-
-      {/* B value */}
-      <div style={{
-        padding: isMobile ? '11px 10px' : '13px 20px',
-        backgroundColor: bWins ? 'rgba(0,153,255,0.05)' : 'transparent',
-        borderRight: bWins ? `2px solid ${A}` : '2px solid transparent',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      }}>
-        <span style={{ fontSize: isMobile ? 11 : 13, color: bWins ? A : 'var(--text-2)', fontWeight: bWins ? 600 : 400, wordBreak: 'break-word', lineHeight: 1.4 }}>
-          {row.bNode}
-        </span>
-        {row.pctB !== undefined && (
-          <div style={{ marginTop: 5 }}>
-            <div style={{ width: '100%', height: 3, backgroundColor: 'var(--bg-elevated)', overflow: 'hidden' }}>
-              <div style={{ width: `${row.pctB}%`, height: '100%', backgroundColor: bWins ? A : 'rgba(255,255,255,0.12)', transition: 'width 0.6s ease' }} />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+function BarPair({a,b,format}:{a:number;b:number;format:(v:number)=>string}) {
+  const max=Math.max(a,b,1)
+  return <div className="compare-bar-pair">{[a,b].map((value,i)=><div className={'compare-bar-row compare-side-'+(i?'B':'A')} key={i}><div className="compare-bar-label"><span className="compare-letter">{i?'B':'A'}</span><strong>{format(value)}</strong></div><div className="compare-bar-track" aria-hidden="true"><div style={{width:(value>0?value/max*100:0)+'%'}} /></div></div>)}</div>
 }

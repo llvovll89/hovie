@@ -12,6 +12,8 @@ export interface Movie {
   popularity: number
   adult: boolean
   mediaType?: 'movie' | 'tv'
+  legacyId?: string
+  needsReview?: boolean
 }
 
 export interface TVShow {
@@ -131,6 +133,8 @@ export interface WatchProviderResult {
   flatrate?: WatchProvider[]
   rent?: WatchProvider[]
   buy?: WatchProvider[]
+  free?: WatchProvider[]
+  ads?: WatchProvider[]
 }
 
 export interface Comment {
@@ -152,6 +156,7 @@ export interface SearchFilters {
   sortBy: 'popularity.desc' | 'vote_average.desc' | 'release_date.desc' | 'release_date.asc'
   runtime: '' | '~90' | '90~120' | '120~150' | '150~'
   language: string
+  providers?: string
 }
 
 export interface VideoItem {

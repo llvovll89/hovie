@@ -1,49 +1,21 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Hero from './Hero'
 import TrendingSection from './TrendingSection'
-import FeaturesSection from './FeaturesSection'
 import RecommendedSection from './RecommendedSection'
-import { useAuthModal } from '../../contexts/AuthModalContext'
-
-const A = 'var(--accent)'
-const AH = 'var(--accent-hover)'
-const AO = 'var(--accent-on)'
-
+import { useAuth } from '../../hooks/useAuth'
+import { BookmarkSimple } from '@phosphor-icons/react/dist/csr/BookmarkSimple'
+import { Checks } from '@phosphor-icons/react/dist/csr/Checks'
+import { Shuffle } from '@phosphor-icons/react/dist/csr/Shuffle'
+import { ShareNetwork } from '@phosphor-icons/react/dist/csr/ShareNetwork'
 export default function Home() {
-  const { openSignUp } = useAuthModal()
-  const navigate = useNavigate()
-  return (
-    <>
-      <title>HOVIE — 영화의 모든 것</title>
-      <meta name="description" content="트렌딩 영화 탐색, 스트리밍 정보 확인, 위시리스트 관리까지 — HOVIE에서 시작하세요." />
-      <meta property="og:title" content="HOVIE — 영화의 모든 것" />
-      <meta property="og:description" content="트렌딩 영화 탐색, 스트리밍 정보 확인, 위시리스트 관리까지 — HOVIE에서 시작하세요." />
-      <Hero />
-      <TrendingSection />
-      <RecommendedSection />
-      <FeaturesSection />
-      <section style={{ padding: '100px 20px', borderTop: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,153,255,0.04) 0%, transparent 70%)' }} />
-        <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', marginBottom: 18, textTransform: 'uppercase' }}>Join Hovie</p>
-          <h2 style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 700, lineHeight: 1.1, marginBottom: 20 }}>
-            Start Your Film<br />Journey Today
-          </h2>
-          <p style={{ color: 'var(--text-3)', fontSize: 16, marginBottom: 44, lineHeight: 1.7 }}>
-            무료로 가입하고 나만의 시네마 경험을 시작하세요.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center' }}>
-            <button onClick={openSignUp} style={{ backgroundColor: A, color: AO, border: 'none', padding: '14px 36px', fontSize: 11, letterSpacing: '0.2em', fontWeight: 700, cursor: 'pointer', transition: 'background-color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = AH)}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = A)}
-            >무료 계정 만들기</button>
-            <button onClick={() => navigate('/search')} style={{ background: 'none', border: '1px solid var(--border-4)', color: 'var(--text)', padding: '14px 36px', fontSize: 11, letterSpacing: '0.2em', cursor: 'pointer', transition: 'border-color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text-2)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-4)')}
-            >영화 탐색하기</button>
-          </div>
-        </div>
-      </section>
-    </>
-  )
+  const { user } = useAuth()
+  return <>
+    <title>HOVIE - 오늘 볼 영화와 TV를 찾아보세요</title>
+    <meta name="description" content="한국 시청 서비스별 영화와 TV 탐색, 감상 기록, 오늘 볼 작품 추천까지 HOVIE에서 만나보세요." />
+    <Hero />
+    <div className="home-shortcuts">{[[BookmarkSimple, '/watchlist', '보고 싶은 작품'], [Checks, '/watched', '감상 기록'], [Shuffle, '/tonight', '오늘 볼 작품'], [ShareNetwork, '/lists', '공유 목록']] .map(([Icon, to, label]) => { const Glyph = Icon as typeof BookmarkSimple; return <Link key={String(to)} to={String(to)}><Glyph size={22} /><span>{String(label)}</span></Link> })}</div>
+    <TrendingSection />
+    <RecommendedSection />
+    {!user && <section className="home-note"><div><h2>좋았던 영화가<br />다음 영화의 시작이 됩니다.</h2><p>작품에 별점을 남기면 감상 기록에서 취향을 찾아 추천합니다.<br />보고 싶은 작품은 목록에 모아두고, 한 편씩 만나보세요.</p></div><Link className="button" to="/watched">감상 기록 시작하기</Link></section>}
+  </>
 }

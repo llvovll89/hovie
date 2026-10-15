@@ -1,0 +1,15 @@
+{
+  "rewrites": [
+    {
+      "source": "/movie/:id(\\d+)",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Twitterbot|[Kk]akaotalk-scrap|Slackbot|Discordbot|LinkedInBot|TelegramBot|WhatsApp).*" }],
+      "destination": "/api/metadata?type=movie&id=:id"
+    },
+    {
+      "source": "/tv/:id(\\d+)",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Twitterbot|[Kk]akaotalk-scrap|Slackbot|Discordbot|LinkedInBot|TelegramBot|WhatsApp).*" }],
+      "destination": "/api/metadata?type=tv&id=:id"
+    },
+    { "source": "/((?!api/|assets/|.*\\.[^/]+$).*)", "destination": "/index.html" }
+  ]
+}

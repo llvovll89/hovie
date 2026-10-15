@@ -1,26 +1,8 @@
-import { useState } from 'react'
-
-interface Props {
-  value: number
-  onChange?: (v: number) => void
-  readOnly?: boolean
-  size?: number
-}
-
+import { useId, useState } from 'react'
+interface Props { value: number; onChange?: (value: number) => void; readOnly?: boolean; size?: number }
 export default function StarRating({ value, onChange, readOnly = false, size = 20 }: Props) {
+  const id = useId()
   const [hovered, setHovered] = useState(0)
-  return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map(star => {
-        const active = (hovered || value) >= star
-        return (
-          <button key={star} type="button" disabled={readOnly} onClick={() => onChange?.(star)}
-            onMouseEnter={() => !readOnly && setHovered(star)}
-            onMouseLeave={() => !readOnly && setHovered(0)}
-            style={{ background: 'none', border: 'none', cursor: readOnly ? 'default' : 'pointer', padding: 1, color: active ? 'var(--accent)' : 'rgba(255,255,255,0.2)', fontSize: size, lineHeight: 1, transition: 'color 0.15s' }}
-          >★</button>
-        )
-      })}
-    </div>
-  )
+  if (readOnly) return <span role="img" aria-label={'5점 중 ' + value + '점'} style={{ display:'inline-flex', gap:2, fontSize:size }}>{[1,2,3,4,5].map(star => <span key={star} aria-hidden="true" style={{ color:value >= star ? 'var(--accent)' : 'var(--border-4)' }}>★</span>)}</span>
+  return <div className="star-picker" role="radiogroup" aria-label="별점">{[1,2,3,4,5].map(star => <label key={star} className="star-choice" onMouseEnter={() => setHovered(star)} onMouseLeave={() => setHovered(0)}><input className="sr-only" type="radio" name={id} value={star} checked={value === star} aria-label={star + '점'} onChange={() => onChange?.(star)} /><span aria-hidden="true" style={{ color:(hovered || value) >= star ? 'var(--accent)' : 'var(--border-4)', fontSize:size }}>★</span></label>)}</div>
 }

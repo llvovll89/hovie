@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect, useEffectEvent } from 'react'
 import { tmdb } from '../../lib/tmdb'
 import Spinner from '../../components/ui/Spinner'
 import Modal from '../../components/ui/Modal'
-import type { MovieImage } from '../../types'
 
 const BASE_IMG = 'https://image.tmdb.org/t/p'
 
@@ -12,45 +12,36 @@ interface Props {
 }
 
 export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
-  const [backdrops, setBackdrops] = useState<MovieImage[]>([])
-  const [posters, setPosters] = useState<MovieImage[]>([])
-  const [loading, setLoading] = useState(true)
+  const imagesQuery = useQuery({ queryKey: ['images', mediaType, movieId], queryFn: () => mediaType === 'tv' ? tmdb.tvImages(movieId) : tmdb.images(movieId) })
+  const backdrops = imagesQuery.data?.backdrops.slice(0,20) ?? []
+  const posters = imagesQuery.data?.posters.slice(0,20) ?? []
+  const loading = imagesQuery.isLoading
   const [tab, setTab] = useState<'backdrops' | 'posters'>('backdrops')
   const [showAll, setShowAll] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
-  useEffect(() => {
-    setLoading(true)
-    ;(mediaType === 'tv' ? tmdb.tvImages(movieId) : tmdb.images(movieId))
-      .then(d => {
-        setBackdrops((d.backdrops as MovieImage[]).slice(0, 20))
-        setPosters((d.posters as MovieImage[]).slice(0, 20))
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [movieId])
 
   const images = tab === 'backdrops' ? backdrops : posters
   const PREVIEW = 9
   const displayed = showAll ? images : images.slice(0, PREVIEW)
 
-  const closeLightbox = useCallback(() => setLightboxIndex(null), [])
-  const prevImage = useCallback(() => setLightboxIndex(i => (i === null || i === 0) ? images.length - 1 : i - 1), [images.length])
-  const nextImage = useCallback(() => setLightboxIndex(i => (i === null) ? 0 : (i + 1) % images.length), [images.length])
-
+  const closeLightbox = () => setLightboxIndex(null)
+  const prevImage = () => setLightboxIndex(i => (i === null || i === 0) ? images.length - 1 : i - 1)
+  const nextImage = () => setLightboxIndex(i => i === null ? 0 : (i + 1) % images.length)
+  const onLightboxKey = useEffectEvent((e: KeyboardEvent) => { if (e.key === 'ArrowLeft') prevImage(); else if (e.key === 'ArrowRight') nextImage() })
+  const lightboxOpen = lightboxIndex !== null
   useEffect(() => {
-    if (lightboxIndex === null) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'ArrowLeft') prevImage()
-      else if (e.key === 'ArrowRight') nextImage()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, prevImage, nextImage])
+    if (!lightboxOpen) return
+    const listener = (e: KeyboardEvent) => onLightboxKey(e)
+    document.addEventListener('keydown', listener)
+    return () => document.removeEventListener('keydown', listener)
+  }, [lightboxOpen])
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}><Spinner size={28} /></div>
   }
+
+  if (imagesQuery.isError) return <p role="alert">이미지를 불러오지 못했습니다. <button className="text-button" onClick={() => void imagesQuery.refetch()}>다시 시도</button></p>
 
   if (backdrops.length === 0 && posters.length === 0) {
     return <p style={{ color: 'var(--text-4)', fontSize: 13 }}>이미지가 없습니다.</p>
@@ -78,7 +69,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
               letterSpacing: '0.12em',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Pretendard Variable, sans-serif',
               marginBottom: -1,
             }}
           >
@@ -96,6 +87,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
         {displayed.map((img, i) => (
           <button
             key={img.file_path}
+            aria-label={(tab === 'backdrops' ? '스틸컷 ' : '포스터 ') + (i + 1) + ' 확대 보기'}
             onClick={() => setLightboxIndex(i)}
             style={{
               padding: 0,
@@ -123,7 +115,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
       {!showAll && images.length > PREVIEW && (
         <button
           onClick={() => setShowAll(true)}
-          style={{ marginTop: 14, width: '100%', padding: '10px', background: 'none', border: '1px solid var(--border-2)', color: 'var(--text-3)', fontSize: 12, letterSpacing: '0.12em', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'Inter, sans-serif' }}
+          style={{ marginTop: 14, width: '100%', padding: '10px', background: 'none', border: '1px solid var(--border-2)', color: 'var(--text-3)', fontSize: 12, letterSpacing: '0.12em', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'Pretendard Variable, sans-serif' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-2)'; e.currentTarget.style.color = 'var(--text-3)' }}
         >
@@ -136,7 +128,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
         <Modal onClose={closeLightbox} ariaLabel="이미지 보기" style={{ zIndex: 9500, backgroundColor: 'rgba(0,0,0,0.96)' }}>
           {(requestClose) => (<>
           {/* Image */}
-          <div style={{ position: 'relative', maxWidth: tab === 'backdrops' ? '90vw' : '50vw', maxHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="gallery-lightbox-media" style={{ position: 'relative', maxWidth: tab === 'backdrops' ? '90vw' : '50vw', maxHeight: '80dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img
               src={`${BASE_IMG}/${fullSize}${currentImg.file_path}`}
               alt=""
@@ -177,7 +169,7 @@ export default function ImageGallery({ movieId, mediaType = 'movie' }: Props) {
             </span>
             <button
               onClick={requestClose}
-              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', padding: '7px 20px', cursor: 'pointer', fontSize: 11, letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.2s', fontFamily: 'Inter, sans-serif' }}
+              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)', padding: '7px 20px', cursor: 'pointer', fontSize: 11, letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.2s', fontFamily: 'Pretendard Variable, sans-serif' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
             >

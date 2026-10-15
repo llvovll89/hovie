@@ -19,6 +19,10 @@ const Compare    = lazy(() => import('./pages/Compare'))
 const Watched    = lazy(() => import('./pages/Watched'))
 const Stats      = lazy(() => import('./pages/Stats'))
 
+const Tonight = lazy(() => import('./pages/Tonight'))
+const Lists = lazy(() => import('./pages/Lists'))
+const About = lazy(() => import('./pages/About'))
+
 function PageFallback() {
   return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -43,7 +47,11 @@ const router = createBrowserRouter([
       { path: 'upcoming',       element: <Suspense fallback={<PageFallback />}><Upcoming /></Suspense>, errorElement: <RouteError /> },
       { path: 'compare',        element: <Suspense fallback={<PageFallback />}><Compare /></Suspense>, errorElement: <RouteError /> },
       { path: 'watched',        element: <Suspense fallback={<PageFallback />}><Watched /></Suspense>, errorElement: <RouteError /> },
+      { path: 'tonight', element: <Suspense fallback={<PageFallback />}><Tonight /></Suspense>, errorElement: <RouteError /> },
+      { path: 'lists', element: <Suspense fallback={<PageFallback />}><Lists /></Suspense>, errorElement: <RouteError /> },
+      { path: 'about', element: <Suspense fallback={<PageFallback />}><About /></Suspense>, errorElement: <RouteError /> },
       { path: 'stats',          element: <Suspense fallback={<PageFallback />}><Stats /></Suspense>, errorElement: <RouteError /> },
+      { path: '*', element: <div className="empty-state"><h1>페이지를 찾을 수 없습니다</h1><a href="/">홈으로 이동</a></div> },
     ],
   },
 ])
@@ -52,7 +60,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <RouterProvider router={router} />
-      <Analytics />
+      {window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost' && <Analytics />}
     </ThemeProvider>
   )
 }

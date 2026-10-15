@@ -1,33 +1,14 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { useTrending } from '../../hooks/useTrending'
+import { useState } from 'react'
+import { tmdb, normalizeTVShow } from '../../lib/tmdb'
+import { mediaKey } from '../../lib/media'
 import MovieCard from '../../components/ui/MovieCard'
 import SkeletonCard from '../../components/ui/SkeletonCard'
-
-const A = 'var(--accent)'
-
 export default function TrendingSection() {
-  const { movies, loading } = useTrending()
-
-  return (
-    <section style={{ padding: '80px 20px' }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 40 }}>
-          <div>
-            <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', margin: '0 0 8px', textTransform: 'uppercase' }}>This Week</p>
-            <h2 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Trending Now</h2>
-          </div>
-          <Link to="/trending" style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--text-4)', textDecoration: 'none', borderBottom: '1px solid var(--border-3)', paddingBottom: 3 }}
-            onMouseEnter={e => { e.currentTarget.style.color = A; e.currentTarget.style.borderBottomColor = 'rgba(0,153,255,0.4)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-4)'; e.currentTarget.style.borderBottomColor = 'var(--border-3)' }}
-          >VIEW ALL</Link>
-        </div>
-        <div className="movie-grid-4">
-          {loading
-            ? <SkeletonCard count={8} />
-            : movies.map((movie, idx) => <MovieCard key={movie.id} movie={movie} rank={idx + 1} />)
-          }
-        </div>
-      </div>
-    </section>
-  )
+  const [type, setType] = useState<'movie' | 'tv'>('movie')
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['home-trending', type], queryFn: async () => type === 'tv' ? (await tmdb.tvTrending()).results.map(normalizeTVShow) : (await tmdb.trending()).results })
+  return <section className="home-section"><div className="section-heading"><h2>지금 많이 찾는 작품</h2><div className="section-actions"><div className="segmented"><button aria-pressed={type === 'movie'} className={type === 'movie' ? 'selected' : ''} onClick={() => setType('movie')}>영화</button><button aria-pressed={type === 'tv'} className={type === 'tv' ? 'selected' : ''} onClick={() => setType('tv')}>TV</button></div><Link to="/trending">트렌딩 전체 보기</Link></div></div>
+    {isError ? <div className="empty-state"><p>인기 작품을 불러오지 못했습니다.</p><button className="button" onClick={() => void refetch()}>다시 시도</button></div> : <div className="home-movie-grid">{isLoading ? <SkeletonCard count={6} /> : data?.slice(0, 6).map((m,i) => <MovieCard key={mediaKey(m)} movie={m} rank={i + 1} />)}</div>}
+  </section>
 }

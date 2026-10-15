@@ -1,10 +1,11 @@
+import DetailSEO from '../../components/ui/DetailSEO'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useMovieDetail } from '../../hooks/useMovieDetail'
 import { useAuth } from '../../hooks/useAuth'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { useAuthModal } from '../../contexts/AuthModalContext'
-import { useToast } from '../../contexts/ToastContext'
+import { useToast } from '../../hooks/useToast'
 import { IMG } from '../../lib/tmdb'
 import { addToWatchlist, removeFromWatchlist, checkInWatchlist, addToWatched, removeFromWatched, checkInWatched, updateWatchedRating, isFirebaseConfigured } from '../../lib/firebase'
 import MovieCard from '../../components/ui/MovieCard'
@@ -22,6 +23,11 @@ const AH = 'var(--accent-hover)'
 
 
 export default function MovieDetail() {
+  const { user } = useAuth()
+  const { id } = useParams()
+  return <MovieDetailContent key={(user?.uid ?? 'guest') + ':' + id} />
+}
+function MovieDetailContent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { isMobile } = useBreakpoint()
@@ -30,7 +36,7 @@ export default function MovieDetail() {
   const { showToast } = useToast()
   const movieId = Number(id)
 
-  const { movie, cast, directors, providers, providerRegion, recommendations, similar, trailerKey, collection, keywords, externalIds, tmdbReviews, loading, error } = useMovieDetail(movieId)
+  const { movie, cast, directors, providers, providerRegion, providerCountries, recommendations, similar, trailerKey, collection, keywords, externalIds, tmdbReviews, koreanRelease, loading, error } = useMovieDetail(movieId)
 
   const [inWatchlist, setInWatchlist] = useState(false)
   const [watchlistLoading, setWatchlistLoading] = useState(false)
@@ -44,24 +50,24 @@ export default function MovieDetail() {
   async function handleShare() {
     const url = window.location.href
     if (navigator.share) {
-      try { await navigator.share({ title: `${movie?.title ?? ''} - HOVIE`, url }) } catch { }
+      try { await navigator.share({ title: `${movie?.title ?? ''} - HOVIE`, url }) } catch { /* Native share cancellation is not an application error. */ }
     } else {
       try {
         await navigator.clipboard.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-      } catch { }
+      } catch { /* Native share cancellation is not an application error. */ }
     }
   }
 
   useEffect(() => {
     if (!user || !movieId || !isFirebaseConfigured) return
-    checkInWatchlist(user.uid, movieId).then(setInWatchlist)
+    checkInWatchlist(user.uid, movieId).then(setInWatchlist).catch(() => showToast('저장 상태를 확인하지 못했습니다.', 'error'))
     checkInWatched(user.uid, movieId).then(({ inWatched, myRating }) => {
       setInWatched(inWatched)
       setWatchedRating(myRating)
     })
-  }, [user, movieId])
+  }, [user, movieId, showToast])
 
   async function saveWatchedEntry() {
     if (!user || !movie) return
@@ -82,7 +88,7 @@ export default function MovieDetail() {
         showToast('시청 기록을 저장했습니다')
       }
       setWatchedPickerOpen(false)
-    } finally { setWatchedLoading(false) }
+    } catch { showToast('감상 기록을 변경하지 못했습니다. 다시 시도해 주세요.', 'error') } finally { setWatchedLoading(false) }
   }
 
   async function deleteWatchedEntry() {
@@ -94,7 +100,7 @@ export default function MovieDetail() {
       setWatchedRating(0)
       setWatchedPickerOpen(false)
       showToast('시청 기록을 삭제했습니다', 'info')
-    } finally { setWatchedLoading(false) }
+    } catch { showToast('감상 기록을 변경하지 못했습니다. 다시 시도해 주세요.', 'error') } finally { setWatchedLoading(false) }
   }
 
   async function toggleWatchlist() {
@@ -118,7 +124,7 @@ export default function MovieDetail() {
         setInWatchlist(true)
         showToast('위시리스트에 추가했습니다')
       }
-    } finally { setWatchlistLoading(false) }
+    } catch { showToast('위시리스트를 변경하지 못했습니다. 다시 시도해 주세요.', 'error') } finally { setWatchlistLoading(false) }
   }
 
   if (loading) {
@@ -144,10 +150,11 @@ export default function MovieDetail() {
   const ogImage = IMG.backdrop(movie.backdrop_path, 'w780') ?? IMG.poster(movie.poster_path, 'w500')
 
   return (
-    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
-      <title>{movie.title} — HOVIE</title>
+    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100dvh' }}>
+      <DetailSEO type="Movie" title={movie.title} overview={movie.overview} poster={movie.poster_path} date={movie.release_date} rating={movie.vote_average} votes={movie.vote_count} />
+      <title>{(movie.title) + " - HOVIE"}</title>
       <meta name="description" content={movie.overview?.slice(0, 160)} />
-      <meta property="og:title" content={`${movie.title} — HOVIE`} />
+      <meta property="og:title" content={`${movie.title} - HOVIE`} />
       <meta property="og:description" content={movie.overview?.slice(0, 160)} />
       {ogImage && <meta property="og:image" content={ogImage} />}
       <meta property="og:type" content="video.movie" />
@@ -165,7 +172,7 @@ export default function MovieDetail() {
         )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.25) 50%, var(--bg) 100%)' }} />
 
-        {/* Trailer play button — opens fullscreen modal */}
+        {/* Trailer play button - opens fullscreen modal */}
         {trailerKey && (
           <button
             onClick={() => setTrailerPlaying(true)}
@@ -395,6 +402,8 @@ export default function MovieDetail() {
         </div>
 
         {/* Body */}
+        {koreanRelease.length > 0 && <div className="release-info">{koreanRelease.filter(r => r.type === 3 || r.type === 2).slice(0, 1).map(r => <span key={r.release_date}>한국 극장 개봉 {r.release_date.slice(0,10)}</span>)}{koreanRelease.find(r => r.certification)?.certification && <span>한국 관람등급: {koreanRelease.find(r => r.certification)?.certification}</span>}</div>}
+        <StreamingInfo providers={providers} region={providerRegion} countries={providerCountries} />
         <div className="movie-detail-layout" style={{ marginBottom: 80 }}>
           <div>
             {directors.length > 0 && (
@@ -445,9 +454,6 @@ export default function MovieDetail() {
           </div>
 
           <div>
-            <SectionBlock title="어디서 볼까?">
-              <StreamingInfo providers={providers} region={providerRegion} />
-            </SectionBlock>
             {movie.budget > 0 && (
               <SectionBlock title="제작 정보">
                 <InfoRow label="예산" value={`$${(movie.budget / 1_000_000).toFixed(0)}M`} />
@@ -575,7 +581,7 @@ function TMDBReviewCard({ review }: { review: import('../../types').TMDBReview }
 
 function MovieDetailSkeleton() {
   return (
-    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100dvh' }}>
       <div className="skeleton" style={{ height: 560 }} />
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px' }}>
         <div className="detail-hero-info">

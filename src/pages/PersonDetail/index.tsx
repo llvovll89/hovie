@@ -77,7 +77,7 @@ export default function PersonDetail() {
   const tvMovies = tvCastCredits.map(tvCreditToMovie)
 
   return (
-    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: 'var(--bg)', minHeight: '100dvh' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 20px 80px' }}>
 
         {/* Back */}
@@ -159,7 +159,7 @@ export default function PersonDetail() {
             <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 32 }}>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>Filmography</p>
               <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
-                출연 작품 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>{castMovies.length}편</span>
+                출연 작품 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 400 }}>{castMovies.length}편</span>
               </h2>
             </div>
             <div className="movie-grid-auto">
@@ -174,7 +174,7 @@ export default function PersonDetail() {
             <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 32 }}>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>Directed</p>
               <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
-                감독 작품 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>{crewMovies.length}편</span>
+                감독 작품 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 400 }}>{crewMovies.length}편</span>
               </h2>
             </div>
             <div className="movie-grid-auto">
@@ -189,7 +189,7 @@ export default function PersonDetail() {
             <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 32 }}>
               <p style={{ color: A, fontSize: 10, letterSpacing: '0.35em', margin: '0 0 6px', textTransform: 'uppercase' }}>TV Series</p>
               <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
-                TV 출연작 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>{tvMovies.length}편</span>
+                TV 출연작 <span style={{ color: 'var(--text-4)', fontSize: 14, fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 400 }}>{tvMovies.length}편</span>
               </h2>
             </div>
             <div className="movie-grid-auto">

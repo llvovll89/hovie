@@ -1,283 +1,92 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { useSearch } from '../../hooks/useSearch'
+import Modal from '../../components/ui/Modal'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
-import { tmdb } from '../../lib/tmdb'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Link, useSearchParams } from 'react-router-dom'
+import { SlidersHorizontal } from '@phosphor-icons/react/dist/csr/SlidersHorizontal'
+import { X } from '@phosphor-icons/react/dist/csr/X'
+import { User } from '@phosphor-icons/react/dist/csr/User'
+import { useSearch } from '../../hooks/useSearch'
+import { tmdb, IMG } from '../../lib/tmdb'
+import { mediaKey } from '../../lib/media'
+import { savePreference, readPreference } from '../../lib/preferences'
 import MovieCard from '../../components/ui/MovieCard'
-import Spinner from '../../components/ui/Spinner'
-import type { Genre, SearchFilters } from '../../types'
-
-const A = 'var(--accent)'
-
-const SORT_OPTIONS = [
-  { value: 'popularity.desc', label: '인기순' },
-  { value: 'release_date.desc', label: '최신순' },
-  { value: 'release_date.asc', label: '오래된 순' },
-  { value: 'vote_average.desc', label: '평점순' },
-] as const
-
-const RATING_OPTIONS = [0, 5, 6, 7, 8]
-const YEAR_OPTIONS = ['', ...Array.from({ length: 35 }, (_, i) => String(2024 - i))]
-
-const RUNTIME_OPTIONS: { value: SearchFilters['runtime']; label: string }[] = [
-  { value: '',        label: '전체' },
-  { value: '~90',     label: '~90분' },
-  { value: '90~120',  label: '90~120분' },
-  { value: '120~150', label: '120~150분' },
-  { value: '150~',    label: '150분 이상' },
-]
-
-const LANGUAGE_OPTIONS = [
-  { value: '',   label: '전체' },
-  { value: 'ko', label: '🇰🇷 한국어' },
-  { value: 'en', label: '🇺🇸 영어' },
-  { value: 'ja', label: '🇯🇵 일본어' },
-  { value: 'zh', label: '🇨🇳 중국어' },
-  { value: 'fr', label: '🇫🇷 프랑스어' },
-  { value: 'es', label: '🇪🇸 스페인어' },
-  { value: 'de', label: '🇩🇪 독일어' },
-]
-
+import SkeletonCard from '../../components/ui/SkeletonCard'
+import SearchDropdown from '../../components/ui/SearchDropdown'
+import ProviderPicker from '../../components/ui/ProviderPicker'
+import FilterSelect from '../../components/ui/FilterSelect'
+import type { SearchFilters } from '../../types'
+const SORTS = [['popularity.desc', '인기순'], ['release_date.desc', '최신순'], ['release_date.asc', '오래된 순'], ['vote_average.desc', '평점순']]
+const RUNTIMES = [['', '전체'], ['~90', '90분 이하'], ['90~120', '90~120분'], ['120~150', '120~150분'], ['150~', '150분 이상']]
+const LANGUAGES = [['', '전체'], ['ko', '한국어'], ['en', '영어'], ['ja', '일본어'], ['zh', '중국어'], ['fr', '프랑스어'], ['es', '스페인어'], ['de', '독일어']]
 export default function Search() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [genres, setGenres] = useState<Genre[]>([])
+  const [params, setParams] = useSearchParams()
   const [filterOpen, setFilterOpen] = useState(false)
-  const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie')
   const { isMobile } = useBreakpoint()
-  const sentinelRef = useRef<HTMLDivElement>(null)
-
+  const query = params.get('q') ?? ''
+  const type = params.get('type') === 'tv' ? 'tv' : params.get('type') === 'all' && query.trim() ? 'all' : 'movie'
+  const browsing = !query.trim()
   const filters = useMemo<SearchFilters>(() => ({
-    genre:     searchParams.get('genre') ? Number(searchParams.get('genre')) : null,
-    year:      searchParams.get('year') ?? '',
-    minRating: Number(searchParams.get('rating') ?? 0),
-    sortBy:    (searchParams.get('sort') ?? 'popularity.desc') as SearchFilters['sortBy'],
-    runtime:   (searchParams.get('runtime') ?? '') as SearchFilters['runtime'],
-    language:  searchParams.get('lang') ?? '',
-  }), [searchParams])
-
-  const query = searchParams.get('q') ?? ''
-  const browseMode = !query.trim()
-
-  const { movies, totalResults, loading, error, loadMore, hasMore } = useSearch(query, filters, mediaType)
-
+    genre: /^\d+$/.test(params.get('genre') ?? '') ? Number(params.get('genre')) : null,
+    year: /^\d{4}$/.test(params.get('year') ?? '') ? params.get('year')! : '',
+    minRating: [0, 5, 6, 7, 8].includes(Number(params.get('rating'))) ? Number(params.get('rating')) : 0,
+    sortBy: (SORTS.some(([v]) => v === params.get('sort')) ? params.get('sort') : 'popularity.desc') as SearchFilters['sortBy'],
+    runtime: (RUNTIMES.some(([v]) => v === params.get('runtime')) ? params.get('runtime') : '') as SearchFilters['runtime'],
+    language: LANGUAGES.some(([v]) => v === params.get('lang')) ? params.get('lang')! : '',
+    providers: (params.get('providers') ?? '').split('|').filter(v => /^\d+$/.test(v)).join('|'),
+  }), [params])
+  const result = useSearch(query, filters, type)
+  const genres = useQuery({ queryKey: ['genres', type], queryFn: type === 'tv' ? tmdb.tvGenres : tmdb.genres })
+  const sentinel = useRef<HTMLDivElement>(null)
+  const { loadMore, hasMore, loadingMore } = result
   useEffect(() => {
-    const fn = mediaType === 'tv' ? tmdb.tvGenres : tmdb.genres
-    fn().then(d => setGenres(d.genres)).catch(console.error)
-  }, [mediaType])
-
-  // Infinite scroll sentinel
-  const loadMoreRef = useRef(loadMore)
-  loadMoreRef.current = loadMore
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) loadMoreRef.current()
-    }, { threshold: 0 })
-    observer.observe(sentinel)
+    const node = sentinel.current
+    if (!node || !hasMore || loadingMore) return
+    const observer = new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMore() }, { rootMargin: '300px' })
+    observer.observe(node)
     return () => observer.disconnect()
-  }, [])
-
-  function updateFilter<K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) {
-    const params = new URLSearchParams(searchParams)
-    if (key === 'genre')     value ? params.set('genre', String(value)) : params.delete('genre')
-    else if (key === 'year')      value ? params.set('year', String(value)) : params.delete('year')
-    else if (key === 'minRating') Number(value) > 0 ? params.set('rating', String(value)) : params.delete('rating')
-    else if (key === 'sortBy')    value === 'popularity.desc' ? params.delete('sort') : params.set('sort', String(value))
-    else if (key === 'runtime')   value ? params.set('runtime', String(value)) : params.delete('runtime')
-    else if (key === 'language')  value ? params.set('lang', String(value)) : params.delete('lang')
-    setSearchParams(params)
+  }, [loadMore, hasMore, loadingMore])
+  function update(key: string, value: string) { const next = new URLSearchParams(params); if (value) next.set(key, value); else next.delete(key); setParams(next) }
+  function changeType(value: string) {
+    const next = new URLSearchParams(params); next.set('type', value); next.delete('genre')
+    if (value === 'tv') next.delete('runtime')
+    setParams(next)
   }
-
-  const sidebar = (
-    <aside className="search-sidebar">
-      <FilterSection title="정렬">
-        {SORT_OPTIONS.map(opt => (
-          <FilterOption key={opt.value} label={opt.label} active={filters.sortBy === opt.value} onClick={() => updateFilter('sortBy', opt.value)} />
-        ))}
-      </FilterSection>
-
-      {/* Runtime filter — movie browse mode only */}
-      {mediaType === 'movie' && (
-        <FilterSection title="상영시간" dimmed={!browseMode}>
-          {RUNTIME_OPTIONS.map(opt => (
-            <FilterOption
-              key={opt.value}
-              label={opt.label}
-              active={filters.runtime === opt.value}
-              disabled={!browseMode}
-              onClick={() => browseMode && updateFilter('runtime', opt.value)}
-            />
-          ))}
-          {!browseMode && (
-            <p style={{ fontSize: 10, color: 'var(--text-5)', marginTop: 4, lineHeight: 1.5 }}>
-              검색어 없이 탐색할 때 적용됩니다
-            </p>
-          )}
-        </FilterSection>
-      )}
-
-      {/* Language filter — browse mode only */}
-      <FilterSection title="원어" dimmed={!browseMode}>
-        {LANGUAGE_OPTIONS.map(opt => (
-          <FilterOption
-            key={opt.value}
-            label={opt.label}
-            active={filters.language === opt.value}
-            disabled={!browseMode}
-            onClick={() => browseMode && updateFilter('language', opt.value)}
-          />
-        ))}
-        {!browseMode && (
-          <p style={{ fontSize: 10, color: 'var(--text-5)', marginTop: 4, lineHeight: 1.5 }}>
-            검색어 없이 탐색할 때 적용됩니다
-          </p>
-        )}
-      </FilterSection>
-
-      <FilterSection title="최소 평점">
-        {RATING_OPTIONS.map(r => (
-          <FilterOption key={r} label={r === 0 ? '전체' : `${r}점 이상`} active={filters.minRating === r} onClick={() => updateFilter('minRating', r)} />
-        ))}
-      </FilterSection>
-
-      <FilterSection title="장르">
-        <FilterOption label="전체" active={!filters.genre} onClick={() => updateFilter('genre', null)} />
-        {genres.map(g => (
-          <FilterOption key={g.id} label={g.name} active={filters.genre === g.id} onClick={() => updateFilter('genre', g.id)} />
-        ))}
-      </FilterSection>
-
-      <FilterSection title="연도">
-        <select
-          value={filters.year}
-          onChange={e => updateFilter('year', e.target.value)}
-          style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-2)', color: filters.year ? 'var(--text)' : 'var(--text-4)', padding: '9px 12px', fontSize: 12, outline: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-        >
-          {YEAR_OPTIONS.map(y => (
-            <option key={y} value={y} style={{ backgroundColor: 'var(--bg-elevated)' }}>{y || '전체 연도'}</option>
-          ))}
-        </select>
-      </FilterSection>
-    </aside>
-  )
-
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', padding: '36px 20px 80px' }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-
-        <div style={{ marginBottom: 28 }}>
-          <p style={{ color: A, fontSize: 10, letterSpacing: '0.4em', marginBottom: 6, textTransform: 'uppercase' }}>
-            {query ? 'Search Results' : 'Browse'}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
-                  {query ? `"${query}" 검색 결과` : '전체 탐색'}
-                </h1>
-                <div style={{ display: 'flex', border: '1px solid var(--border-2)', overflow: 'hidden' }}>
-                  {(['movie', 'tv'] as const).map(mt => (
-                    <button
-                      key={mt}
-                      onClick={() => {
-                        setMediaType(mt)
-                        const params = new URLSearchParams(searchParams)
-                        params.delete('genre')
-                        setSearchParams(params)
-                      }}
-                      style={{ padding: '5px 14px', background: mediaType === mt ? A : 'transparent', color: mediaType === mt ? 'var(--accent-on)' : 'var(--text-3)', border: 'none', fontSize: 11, letterSpacing: '0.12em', fontWeight: mediaType === mt ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s' }}
-                    >
-                      {mt === 'movie' ? '영화' : 'TV'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {totalResults > 0 && (
-                <p style={{ color: 'var(--text-4)', fontSize: 13, margin: 0 }}>{totalResults.toLocaleString()}개의 결과</p>
-              )}
-            </div>
-            {isMobile && (
-              <button
-                onClick={() => setFilterOpen(o => !o)}
-                style={{ background: 'none', border: '1px solid var(--border-4)', color: 'var(--text-3)', fontSize: 11, letterSpacing: '0.15em', padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                  <path d="M3 6h18M7 12h10M11 18h2" strokeLinecap="round" />
-                </svg>
-                필터 {filterOpen ? '닫기' : '열기'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="search-layout">
-          {(!isMobile || filterOpen) && sidebar}
-
-          <div className="search-results">
-            {!loading && error ? (
-              <div style={{ textAlign: 'center', paddingTop: 80, color: 'var(--text-3)' }}>
-                <p style={{ fontSize: 32, marginBottom: 12 }}>⚠️</p>
-                <p>{error}</p>
-              </div>
-            ) : !loading && movies.length === 0 ? (
-              <div style={{ textAlign: 'center', paddingTop: 80 }}>
-                <p style={{ fontSize: 40, marginBottom: 14 }}>🎬</p>
-                <p style={{ color: 'var(--text-3)', fontSize: 15 }}>검색 결과가 없습니다.</p>
-                <p style={{ color: 'var(--text-4)', fontSize: 12, marginTop: 6 }}>다른 키워드나 필터를 시도해보세요.</p>
-              </div>
-            ) : (
-              <>
-                <div className="movie-grid-auto">
-                  {movies.map(movie => <MovieCard key={movie.id} movie={movie} />)}
-                </div>
-
-                {/* Infinite scroll sentinel */}
-                <div ref={sentinelRef} style={{ height: 1 }} />
-
-                {/* Loading indicator */}
-                {loading && (
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
-                    <Spinner size={32} />
-                  </div>
-                )}
-
-                {!loading && !hasMore && movies.length > 0 && (
-                  <p style={{ textAlign: 'center', color: 'var(--text-5)', fontSize: 11, letterSpacing: '0.15em', padding: '32px 0' }}>
-                    — 모든 결과를 불러왔습니다 —
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+  const count = [filters.genre, filters.year, filters.minRating, filters.runtime, filters.language, filters.providers].filter(Boolean).length
+  const filterPanel = <aside id="search-filters" className={'filter-panel ' + (filterOpen ? 'is-open' : '')}>
+        <div className="filter-panel-top"><h2>탐색 조건</h2><button className="text-button" onClick={() => setParams({ type: type === 'tv' ? 'tv' : 'movie' })}>초기화</button><button className="icon-button mobile-only" aria-label="필터 닫기" onClick={() => setFilterOpen(false)}><X size={20} /></button></div>
+        <FilterSelect label="정렬" value={filters.sortBy} onChange={v => update('sort', v)} options={SORTS.map(([value,label]) => ({ value,label }))} />
+        <FilterSelect label="장르" value={filters.genre ?? ''} onChange={v => update('genre', v)} options={[{ value:'',label:'전체 장르' }, ...(genres.data?.genres.map(g => ({ value:g.id,label:g.name })) ?? [])]} disabled={genres.isLoading} />
+        <FilterSelect label="연도" value={filters.year} onChange={v => update('year', v)} options={[{ value:'',label:'전체 연도' }, ...Array.from({ length:new Date().getFullYear()+2-1950 }, (_,i) => { const y=new Date().getFullYear()+1-i; return { value:String(y),label:y+'년' } })]} />
+        <FilterSelect label="최소 평점" value={filters.minRating} onChange={v => update('rating', v)} options={[0,5,6,7,8].map(v => ({ value:v,label:v ? v+'점 이상' : '전체' }))} />
+        {type === 'movie' && <FilterSelect label="상영시간" value={filters.runtime} onChange={v => update('runtime', v)} options={RUNTIMES.map(([value,label]) => ({ value,label }))} />}
+        <FilterSelect label="원어" value={filters.language} onChange={v => update('lang', v)} options={LANGUAGES.map(([value,label]) => ({ value,label }))} />
+        <details open={!!filters.providers}><summary>시청 서비스 {filters.providers ? '(' + filters.providers.split('|').length + ')' : ''}</summary><ProviderPicker type={type === 'tv' ? 'tv' : 'movie'} value={filters.providers ?? ''} onChange={v => { update('providers', v); savePreference('hovie_providers_' + type, v) }} />
+          <button className="text-button" onClick={() => update('providers', readPreference<string>('hovie_providers_' + type, ''))}>내 서비스 불러오기</button></details>
+        <p className="helper">조건을 바꾸면 결과에 바로 반영됩니다.</p><button className="button primary mobile-only" onClick={() => setFilterOpen(false)}>결과 보기</button>
+      </aside>
+  return <div className="page-shell">
+    <title>{(query ? query + ' 검색' : '작품 탐색') + " - HOVIE"}</title>
+    <div className="page-heading"><div><h1>{query ? '“' + query + '” 검색 결과' : '어떤 작품을 찾고 있나요?'}</h1><p>{browsing ? '취향과 시청 서비스에 맞춰 골라보세요.' : '영화, TV, 인물을 한곳에서 찾아보세요.'}</p></div></div>
+    <div className="search-page-input"><SearchDropdown /></div>
+    <div className="search-toolbar"><div className="segmented" role="group" aria-label="콘텐츠 종류">{(query ? [['all', '전체'], ['movie', '영화'], ['tv', 'TV']] : [['movie', '영화'], ['tv', 'TV']]).map(([value, label]) => <button type="button" key={value} aria-pressed={type === value} className={type === value ? 'selected' : ''} onClick={() => changeType(value)}>{label}</button>)}</div>
+      {browsing && <button className="button filter-toggle" aria-expanded={filterOpen} aria-controls="search-filters" onClick={() => setFilterOpen(v => !v)}><SlidersHorizontal size={18} />필터{count ? ' ' + count : ''}</button>}
+      <p className="result-count" aria-live="polite">{result.loading ? '불러오는 중' : result.totalResults.toLocaleString() + '개 결과'}</p>
     </div>
-  )
-}
-
-/* ── Sub-components ── */
-
-function FilterSection({ title, children, dimmed }: { title: string; children: React.ReactNode; dimmed?: boolean }) {
-  return (
-    <div style={{ marginBottom: 24, opacity: dimmed ? 0.55 : 1, transition: 'opacity 0.2s' }}>
-      <p style={{ fontSize: 10, letterSpacing: '0.25em', color: 'var(--text-4)', marginBottom: 8, textTransform: 'uppercase' }}>{title}</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>{children}</div>
+    {!browsing && <p className="search-notice">제목 검색에서는 상세 조건과 정렬을 적용하지 않습니다. <button className="text-button" onClick={() => { const next = new URLSearchParams(params); next.delete('q'); if (type === 'all') next.set('type', 'movie'); setParams(next) }}>조건으로 탐색하기</button></p>}
+    <div className={'discovery-layout ' + (!browsing ? 'without-filters' : '')}>
+      {browsing && (isMobile ? filterOpen && <Modal onClose={() => setFilterOpen(false)} ariaLabel="탐색 조건" style={{ backgroundColor: 'var(--bg)' }}>{filterPanel}</Modal> : filterPanel)}
+      <section className="search-results" aria-label="검색 결과">
+        <h2 className="sr-only">작품 검색 결과</h2>
+        {result.error ? <div className="empty-state" role="alert"><h2>{result.error}</h2><button className="button" onClick={() => void result.retry()}>다시 시도</button></div> : result.loading ? <div className="movie-grid-auto"><SkeletonCard count={12} /></div> : <>
+          {result.people.length > 0 && <div className="people-results"><h2>인물</h2><div className="people-scroll">{result.people.map(p => <Link key={p.id} to={'/person/' + p.id} className="person-result">{p.profile_path ? <img src={IMG.poster(p.profile_path, 'w185')!} alt="" /> : <User size={36} />}<strong>{p.name}</strong><small>{p.known_for_department === 'Acting' ? '배우' : p.known_for_department === 'Directing' ? '감독' : p.known_for_department}</small></Link>)}</div></div>}
+          {result.movies.length > 0 && <div className="movie-grid-auto">{result.movies.map(m => <MovieCard key={mediaKey(m)} movie={m} />)}</div>}
+          {!result.movies.length && !result.people.length && <div className="empty-state"><h2>조건에 맞는 결과가 없습니다</h2><p>검색어나 필터를 바꿔보세요.</p><button className="button" onClick={() => setParams({ type: type === 'tv' ? 'tv' : 'movie' })}>조건 초기화</button></div>}
+          <div ref={sentinel} />
+          {result.loadingMore && <div className="movie-grid-auto" style={{ marginTop: 24 }}><SkeletonCard count={6} /></div>}
+          {result.hasMore && <button className="button load-more" disabled={result.loadingMore} onClick={loadMore}>더 보기</button>}
+        </>}
+      </section>
     </div>
-  )
-}
-
-function FilterOption({ label, active, disabled, onClick }: { label: string; active: boolean; disabled?: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{ textAlign: 'left', background: 'none', border: 'none', padding: '7px 10px', fontSize: 13, color: active ? 'var(--accent)' : 'var(--text-3)', cursor: disabled ? 'default' : 'pointer', transition: 'color 0.2s', borderLeft: `2px solid ${active ? 'var(--accent)' : 'transparent'}`, fontFamily: 'Inter, sans-serif' }}
-      onMouseEnter={e => { if (!active && !disabled) e.currentTarget.style.color = 'var(--text)' }}
-      onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'var(--text-3)' }}
-    >
-      {label}
-    </button>
-  )
+  </div>
 }
